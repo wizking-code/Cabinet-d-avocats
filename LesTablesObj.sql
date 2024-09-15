@@ -1,4 +1,4 @@
-CREATE TABLE CLIENT_O OF TYPE CLIENT_T (
+CREATE TABLE CLIENT_O OF CLIENT_T (
 constraint pk_o_client_clientno primary key(clientno),
 NOM constraint client_o_nom_not_null not null,
 PRENOM constraint client_o_prenom_not_null not null,
@@ -9,7 +9,7 @@ NESTED TABLE cListRefDossiers STORE AS table_cListRefDossiers
 /
 
 
-CREATE TABLE NOTAIRE_O OF TYPE NOTAIRE_T (
+CREATE TABLE NOTAIRE_O OF NOTAIRE_T (
 constraint pk_o_notaire_notaireno primary key(notaireno),
 NOM constraint notaire_o_nom_not_null not null,
 PRENOM constraint notaire_o_prenom_not_null not null,
@@ -22,7 +22,7 @@ NESTED TABLE nlistRefDossiers STORE AS table_nListRefDossiers
 
 
 
-CREATE TABLE DOCUMENT_O OF TYPE DOCUMENT_T (
+CREATE TABLE DOCUMENT_O OF DOCUMENT_T (
 constraint pk_o_document_documentno primary key(documentno),
 titre constraint document_o_titre_not_null not null,
 typedoc constraint document_o_typedoc_not_null not null,
@@ -32,7 +32,7 @@ LOB (contenu) STORE AS storeContenu(PCTVERSION 30)
 /
 
 
-CREATE TABLE PAIEMENT_O OF TYPE PAIEMENT_T (
+CREATE TABLE PAIEMENT_O OF PAIEMENT_T (
 constraint pk_o_paiement_paiementno primary key (paiementno),
 montant constraint paiement_o_montant_not_null not null,
 methode constraint paiement_o_methode_not_null not null,
@@ -44,7 +44,7 @@ date_paiement constraint paiement_o_date_paiement_not_null not null
 
 
 
-CREATE  TABLE RENDEZVOUS_O OF TABLE RENDEZVOUS_T (
+CREATE  TABLE RENDEZVOUS_O OF RENDEZVOUS_T (
 constraint pk_o_rendezvous_rendezvousno primary key (rendezvousno),
 date_rdv constraint rendezvous_o_date_rdv_not_null not null,
 heure constraint rendezvous_o_heure_not_null not null,
@@ -54,13 +54,13 @@ description  constraint rendezvous_o_description_not_null not null
 /
 
 
-CREATE TABLE DOSSIER_O OF TABLE DOSSIER_T (
+CREATE TABLE DOSSIER_O OF DOSSIER_T (
 constraint pk_o_dossier_dossierno primary key (dossierno),
 nom constraint dossier_o_nom_not_null not null,
 description constraint dossier_o_description_not_null not null,
 dateouverture constraint dossier_o_dateouverture_not_null not null,
 datefermeture constraint dossier_o_datefermeture_not_null not null,
-statut constraint dossier_o_statut_not_null not null,
+statut constraint dossier_o_statut_not_null not null
 );
 /
 
