@@ -925,7 +925,7 @@ ORDER BY Nom desc;
 
 -- Requête affichant le nombre de dossiers par notaire.
 SELECT 
-    n.NOM, 
+    n.NOM as Notaire, 
     COUNT(d.DOSSIERNO) "Nombre de dossiers"
 FROM NOTAIRE_O n
 JOIN DOSSIER_O d ON DEREF(d.REFNOTAIRE).NOTAIRENO = n.NOTAIRENO
@@ -1068,7 +1068,7 @@ END;
 --============================ Implémentation des méthodes du type CLIENT_T ============================--
 CREATE OR REPLACE TYPE BODY CLIENT_T
 AS
-    member procedure addLinkListeDossiers(RefDossier1 REF Dossier_t) IS
+    member procedure addLinkListeDossiers(RefDossier1 REF DOSSIER_T) IS
     BEGIN
         INSERT INTO 
             TABLE(SELECT c.clistrefdossiers  FROM CLIENT_O c WHERE c.CLIENTNO = SELF.CLIENTNO) 
@@ -1078,7 +1078,7 @@ AS
         WHEN others then
         RAISE;
     END;
-    member procedure deleteLinkListeDossiers (RefDossier1 REF Dossier_t) IS
+    member procedure deleteLinkListeDossiers (RefDossier1 REF DOSSIER_T) IS
     BEGIN
         DELETE FROM
             TABLE(SELECT c.clistrefdossiers  FROM CLIENT_O c WHERE c.CLIENTNO = SELF.CLIENTNO) clf
@@ -1087,7 +1087,7 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure updateLinkListeDossiers(RefDossier1 REF Dossier_t, RefDossier2 REF Dossier_t) IS
+    member procedure updateLinkListeDossiers(RefDossier1 REF DOSSIER_T, RefDossier2 REF DOSSIER_T) IS
     BEGIN
         UPDATE
             TABLE(SELECT c.clistrefdossiers  FROM CLIENT_O c WHERE c.CLIENTNO = SELF.CLIENTNO) clf
@@ -1097,7 +1097,7 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure createClient(client in client_t) IS
+    member procedure createClient(client in CLIENT_T) IS
     BEGIN
         INSERT INTO CLIENT_O (CLIENTNO, NOM, PRENOM, ADRESSE, TELEPHONE, EMAIL, clistRefDossiers)
         VALUES (client.CLIENTNO, client.NOM, client.PRENOM, client.ADRESSE, client.TELEPHONE, client.EMAIL, client.clistRefDossiers);
@@ -1105,14 +1105,13 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    static function getClient (clientno number) RETURN CLIENT_T IS
+    static function getClient (clientno1 IN NUMBER) RETURN CLIENT_T IS
         client1 client_t;
     BEGIN
-        -- Limiter à une seule ligne avec ROWNUM
         SELECT VALUE(c) 
         INTO client1 
         FROM CLIENT_O c
-        WHERE CLIENTNO = clientno AND ROWNUM = 1;
+        WHERE CLIENTNO = clientno1;
 
         RETURN client1;
     EXCEPTION
@@ -1121,7 +1120,7 @@ AS
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20002, 'Erreur inattendue : ' || SQLERRM);
     END;
-    member procedure updateClient(client in client_t) IS
+    member procedure updateClient(client IN CLIENT_T) IS
     BEGIN
         UPDATE CLIENT_O c SET 
             c.NOM = client.Nom,
@@ -1135,19 +1134,16 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure deleteClient(clientno NUMBER) IS
-        TYPE refclient_t IS TABLE OF REF client_t;
-        refclient_list refclient_t;
+    member procedure deleteClient(clientno1 IN NUMBER) IS
+        refclient1 REF client_t;
     BEGIN
         DELETE FROM CLIENT_O c 
-        WHERE c.clientno = clientno 
-        RETURNING ref(c) BULK COLLECT INTO refclient_list;
+        WHERE c.clientno = clientno1 
+        RETURNING ref(c) INTO refclient1;
         
-        FOR i IN refclient_list.FIRST..refclient_list.LAST LOOP
-            UPDATE DOSSIER_O d 
-            SET d.REFCLIENT = null 
-            WHERE d.REFCLIENT = refclient_list(i);  
-        END LOOP;
+        UPDATE DOSSIER_O d 
+        SET d.REFCLIENT = null 
+        WHERE d.REFCLIENT = refclient1;
         
     EXCEPTION
         WHEN OTHERS THEN
@@ -1171,7 +1167,7 @@ END;
 --============================ Implémentation des méthodes du type NOTAIRE_T ============================--
 CREATE OR REPLACE TYPE BODY NOTAIRE_T  
 AS
-    member procedure addLinkListeDossiers(RefDossier1 REF Dossier_t) IS
+    member procedure addLinkListeDossiers(RefDossier1 REF DOSSIER_T) IS
     BEGIN
         INSERT INTO 
             TABLE(SELECT n.nlistRefDossiers  FROM NOTAIRE_O n WHERE n.NOTAIRENO = SELF.NOTAIRENO) 
@@ -1181,7 +1177,7 @@ AS
         WHEN others then
         RAISE;
     END;
-    member procedure deleteLinkListeDossiers (RefDossier1 REF Dossier_t) IS
+    member procedure deleteLinkListeDossiers (RefDossier1 REF DOSSIER_T) IS
     BEGIN
         DELETE FROM
             TABLE(SELECT n.nlistRefDossiers  FROM NOTAIRE_O n WHERE n.NOTAIRENO = SELF.NOTAIRENO) nlf
@@ -1190,7 +1186,7 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure updateLinkListeDossiers(RefDossier1 REF Dossier_t, RefDossier2 REF Dossier_t) IS
+    member procedure updateLinkListeDossiers(RefDossier1 REF DOSSIER_T, RefDossier2 REF DOSSIER_T) IS
     BEGIN
         UPDATE
             TABLE(SELECT n.nlistRefDossiers  FROM NOTAIRE_O n WHERE n.NOTAIRENO = SELF.NOTAIRENO) nlf
@@ -1200,7 +1196,7 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure createNotaire(notaire in notaire_t) IS
+    member procedure createNotaire(notaire IN NOTAIRE_T) IS
     BEGIN
         INSERT INTO NOTAIRE_O (NOTAIRENO, NOM, PRENOM, ADRESSE, TELEPHONE, EMAIL, SPECIALITE, nlistRefDossiers)
         VALUES (notaire.NOTAIRENO, notaire.NOM, notaire.PRENOM, notaire.ADRESSE, notaire.TELEPHONE, notaire.EMAIL, notaire.SPECIALITE, notaire.nlistRefDossiers);
@@ -1208,14 +1204,13 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    static function getNotaire (notaireno NUMBER) RETURN notaire_t IS
+    static function getNotaire (notaireno1 IN NUMBER) RETURN NOTAIRE_T IS
         notaire1 notaire_t;
     BEGIN
-        -- Limiter à une seule ligne avec ROWNUM
         SELECT VALUE(n) 
         INTO notaire1 
         FROM NOTAIRE_O n
-        WHERE n.NOTAIRENO = notaireno AND ROWNUM = 1;
+        WHERE n.NOTAIRENO = notaireno1;
 
         RETURN notaire1;
     EXCEPTION
@@ -1224,7 +1219,7 @@ AS
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20002, 'Erreur inattendue : ' || SQLERRM);
     END;
-    member procedure updateNotaire(notaire in notaire_t) IS 
+    member procedure updateNotaire(notaire IN NOTAIRE_T) IS 
     BEGIN
         UPDATE NOTAIRE_O n SET 
             n.NOM = notaire.Nom,
@@ -1239,11 +1234,11 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure deleteNotaire(notaireno NUMBER) IS
+    member procedure deleteNotaire(notaireno1 IN NUMBER) IS
         refnotaire1 ref notaire_t;
     BEGIN
         DELETE FROM NOTAIRE_O n 
-        WHERE n.notaireno = notaireno  AND ROWNUM = 1 
+        WHERE n.notaireno = notaireno1
         RETURNING ref(n) INTO refnotaire1;
     
         UPDATE DOSSIER_O d 
@@ -1271,7 +1266,7 @@ END;
 --============================ Implémentation des méthodes du type DOCUMENT_T ============================--
 CREATE OR REPLACE TYPE BODY DOCUMENT_T 
 AS    
-    member procedure createDocument(document in Document_t) IS
+    member procedure createDocument(document IN DOCUMENT_T) IS
     BEGIN
         INSERT INTO DOCUMENT_O (DOCUMENTNO, TITRE, TYPE_DOC, CONTENU, DATECREATION, REFDOSSIER)
         VALUES (document.DOCUMENTNO, document.TITRE, document.TYPE_DOC, document.CONTENU, document.DATECREATION, document.REFDOSSIER);
@@ -1279,15 +1274,13 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    static function searchDocument(documentno NUMBER) RETURN Document_t IS
+    static function searchDocument(documentno1 IN NUMBER) RETURN DOCUMENT_T IS
         document1 document_t;
     BEGIN
-        -- Limiter à une seule ligne avec ROWNUM
         SELECT VALUE(d) 
         INTO document1 
         FROM DOCUMENT_O d
-        WHERE d.DOCUMENTNO = documentno
-        AND ROWNUM = 1;
+        WHERE d.DOCUMENTNO = documentno1;
 
         RETURN document1;
     EXCEPTION
@@ -1296,7 +1289,7 @@ AS
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20002, 'Erreur inattendue : ' || SQLERRM);
     END;
-    member procedure updateDocument(document in Document_t) IS
+    member procedure updateDocument(document IN DOCUMENT_T) IS
     BEGIN
         UPDATE DOCUMENT_O d SET 
             d.TITRE = document.TITRE,
@@ -1309,9 +1302,9 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure deleteDocument(documentno NUMBER) IS
+    member procedure deleteDocument(documentno1 IN NUMBER) IS
     BEGIN
-        DELETE FROM DOCUMENT_O d WHERE d.documentno = documentno;
+        DELETE FROM DOCUMENT_O d WHERE d.documentno = documentno1;
         
     EXCEPTION
         WHEN OTHERS THEN
@@ -1332,10 +1325,69 @@ AS
 END;
 /
 
+--============================ Implémentation des méthodes du type Paiement_t ============================--
+CREATE OR REPLACE TYPE BODY PAIEMENT_T 
+AS
+    member procedure createPaiement(paiement IN PAIEMENT_T) IS
+    BEGIN
+        INSERT INTO PAIEMENT_O(PAIEMENTNO, MONTANT, METHODE, DESC_PAIEMENT, DATEPAIEMENT, REFDOSSIER)
+        VALUES (paiement.PAIEMENTNO, paiement.MONTANT, paiement.METHODE, paiement.DESC_PAIEMENT, paiement.DATEPAIEMENT, paiement.REFDOSSIER);
+    EXCEPTION
+        WHEN OTHERS THEN
+        RAISE;
+    END;
+    static function searchPaiement(paiementno1 IN NUMBER) RETURN PAIEMENT_T IS
+        paiement1 paiement_t;
+    BEGIN
+        -- Limiter à une seule ligne avec ROWNUM
+        SELECT VALUE(p) 
+        INTO paiement1 
+        FROM PAIEMENT_O p
+        WHERE p.PAIEMENTNO = paiementno1;
+
+        RETURN paiement1;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Aucun rendez-vous trouvé avec ce numéro.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20002, 'Erreur inattendue : ' || SQLERRM);
+    END;
+    member procedure updatePaiement(paiement IN PAIEMENT_T) IS
+    BEGIN
+        UPDATE PAIEMENT_O p SET 
+            p.MONTANT = paiement.MONTANT,
+            p.METHODE = paiement.METHODE,
+            p.DESC_PAIEMENT = paiement.DESC_PAIEMENT,
+            p.DATEPAIEMENT = paiement.DATEPAIEMENT,
+            p.REFDOSSIER = paiement.REFDOSSIER
+        WHERE p.PAIEMENTNO = paiement.PAIEMENTNO;
+    EXCEPTION
+        WHEN OTHERS THEN
+        RAISE;
+    END;
+    member procedure deletePaiement(paiementno1 IN NUMBER) IS
+    BEGIN
+        DELETE FROM PAIEMENT_O p WHERE p.paiementno = paiementno1;
+    END;
+    static function searchAllPaiement RETURN listRefPaiements_t IS
+        r_listPaiements listRefPaiements_t := listRefPaiements_t();
+    BEGIN
+        SELECT REF(p) BULK COLLECT INTO r_listPaiements FROM PAIEMENT_O p;
+        
+        RETURN r_listPaiements;
+    EXCEPTION
+        WHEN no_data_found THEN
+            raise;
+        WHEN others THEN
+            raise;
+    END;
+END;
+/
+
 --============================ Implémentation des méthodes du type RENDEZVOUS_T ============================--
 CREATE OR REPLACE TYPE BODY RENDEZVOUS_T 
 AS  
-    member procedure createRendezvous(rendezvous in Rendezvous_t) IS
+    member procedure createRendezvous(rendezvous IN RENDEZVOUS_T) IS
     BEGIN
         INSERT INTO RENDEZVOUS_O (RENDEZVOUSNO, DATE_RDV, HEURE, LIEU, DESCRIPTION, REFDOSSIER)
         VALUES (rendezvous.RENDEZVOUSNO, rendezvous.DATE_RDV, rendezvous.HEURE, rendezvous.LIEU, rendezvous.DESCRIPTION, rendezvous.REFDOSSIER);
@@ -1343,19 +1395,17 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    static function searchRendezvous(rendezvousno Number) RETURN Rendezvous_t IS
+    static function searchRendezvous(rendezvousno1 IN NUMBER) RETURN RENDEZVOUS_T IS
         rendezvous1 rendezvous_t;
     BEGIN
-         -- Limiter à une seule ligne avec ROWNUM
         SELECT VALUE(r) 
         INTO rendezvous1 
         FROM RENDEZVOUS_O r
-        WHERE RENDEZVOUSNO = rendezvousno
-        AND ROWNUM = 1;
+        WHERE RENDEZVOUSNO = rendezvousno1;
 
         RETURN rendezvous1;
     END;
-    member procedure updateRendezvous(rendezvous in Rendezvous_t) IS
+    member procedure updateRendezvous(rendezvous IN RENDEZVOUS_T) IS
     BEGIN
         UPDATE RENDEZVOUS_O r SET 
             r.DATE_RDV = rendezvous.DATE_RDV,
@@ -1368,9 +1418,9 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure deleteRendezvous(rendezvousno NUMBER) IS
+    member procedure deleteRendezvous(rendezvousno1 IN NUMBER) IS
     BEGIN
-        DELETE FROM RENDEZVOUS_O r WHERE r.RENDEZVOUSNO = rendezvousno;
+        DELETE FROM RENDEZVOUS_O r WHERE r.RENDEZVOUSNO = rendezvousno1;
         
     EXCEPTION
         WHEN OTHERS THEN
@@ -1391,70 +1441,10 @@ AS
 END;
 /
 
---============================ Implémentation des méthodes du type Paiement_t ============================--
-CREATE OR REPLACE TYPE BODY PAIEMENT_T 
-AS
-    member procedure createPaiement(paiement in paiement_t) IS
-    BEGIN
-        INSERT INTO PAIEMENT_O(PAIEMENTNO, MONTANT, METHODE, DESC_PAIEMENT, DATEPAIEMENT, REFDOSSIER)
-        VALUES (paiement.PAIEMENTNO, paiement.MONTANT, paiement.METHODE, paiement.DESC_PAIEMENT, paiement.DATEPAIEMENT, paiement.REFDOSSIER);
-    EXCEPTION
-        WHEN OTHERS THEN
-        RAISE;
-    END;
-    static function searchPaiement(paiementno NUMBER) RETURN Paiement_t IS
-        paiement1 paiement_t;
-    BEGIN
-        -- Limiter à une seule ligne avec ROWNUM
-        SELECT VALUE(p) 
-        INTO paiement1 
-        FROM PAIEMENT_O p
-        WHERE p.PAIEMENTNO = paiementno
-        AND ROWNUM = 1;
-
-        RETURN paiement1;
-    EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-            RAISE_APPLICATION_ERROR(-20001, 'Aucun rendez-vous trouvé avec ce numéro.');
-        WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20002, 'Erreur inattendue : ' || SQLERRM);
-    END;
-    member procedure updatePaiement(paiement in Paiement_t) IS
-    BEGIN
-        UPDATE PAIEMENT_O p SET 
-            p.MONTANT = paiement.MONTANT,
-            p.METHODE = paiement.METHODE,
-            p.DESC_PAIEMENT = paiement.DESC_PAIEMENT,
-            p.DATEPAIEMENT = paiement.DATEPAIEMENT,
-            p.REFDOSSIER = paiement.REFDOSSIER
-        WHERE p.PAIEMENTNO = paiement.PAIEMENTNO;
-    EXCEPTION
-        WHEN OTHERS THEN
-        RAISE;
-    END;
-    member procedure deletePaiement(paiementno NUMBER) IS
-    BEGIN
-        DELETE FROM PAIEMENT_O p WHERE p.paiementno = paiementno;
-    END;
-    static function searchAllPaiement RETURN listRefPaiements_t IS
-        r_listPaiements listRefPaiements_t := listRefPaiements_t();
-    BEGIN
-        SELECT REF(p) BULK COLLECT INTO r_listPaiements FROM PAIEMENT_O p;
-        
-        RETURN r_listPaiements;
-    EXCEPTION
-        WHEN no_data_found THEN
-            raise;
-        WHEN others THEN
-            raise;
-    END;
-END;
-/
-
 --============================ Implémentation des méthodes du type Dossier_t ============================--
 CREATE OR REPLACE TYPE BODY Dossier_t
 AS
-    member procedure addLinkListeDocuments(RefDocument REF Document_t) IS
+    member procedure addLinkListeDocuments(RefDocument REF DOCUMENT_T) IS
     BEGIN
         INSERT INTO 
             TABLE(SELECT d.dListRefDocuments  FROM DOSSIER_O d WHERE d.DOSSIERNO = SELF.DOSSIERNO) 
@@ -1464,7 +1454,7 @@ AS
         WHEN others then
         RAISE;
     END;
-    member procedure deleteLinkListeDocuments (RefDocument REF Document_t) IS
+    member procedure deleteLinkListeDocuments (RefDocument REF DOCUMENT_T) IS
     BEGIN
         DELETE FROM
             TABLE(SELECT d.dListRefDocuments  FROM DOSSIER_O d WHERE d.DOSSIERNO = SELF.DOSSIERNO) dlf
@@ -1473,7 +1463,7 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure updateLinkListeDocuments(RefDocument1 REF Document_t, RefDocument2 REF Document_t) IS
+    member procedure updateLinkListeDocuments(RefDocument1 REF DOCUMENT_T, RefDocument2 REF DOCUMENT_T) IS
     BEGIN
         UPDATE
             TABLE(SELECT d.dListRefDocuments  FROM DOSSIER_O d WHERE d.DOSSIERNO = SELF.DOSSIERNO) dlf
@@ -1483,7 +1473,7 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure addLinkListePaiements(RefPaiement REF Paiement_t) IS
+    member procedure addLinkListePaiements(RefPaiement REF PAIEMENT_T) IS
     BEGIN
         INSERT INTO 
             TABLE(SELECT d.pListRefPaiements  FROM DOSSIER_O d WHERE d.DOSSIERNO = SELF.DOSSIERNO) 
@@ -1493,7 +1483,7 @@ AS
         WHEN others then
         RAISE;
     END;
-    member procedure deleteLinkListePaiements (RefPaiement REF Paiement_t) IS
+    member procedure deleteLinkListePaiements (RefPaiement REF PAIEMENT_T) IS
     BEGIN
         DELETE FROM
             TABLE(SELECT d.pListRefPaiements  FROM DOSSIER_O d WHERE d.DOSSIERNO = SELF.DOSSIERNO) dlf
@@ -1502,7 +1492,7 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure updateLinkListePaiements(RefPaiement1 REF Paiement_t, RefPaiement2 REF Paiement_t) IS
+    member procedure updateLinkListePaiements(RefPaiement1 REF PAIEMENT_T, RefPaiement2 REF PAIEMENT_T) IS
     BEGIN
         UPDATE
             TABLE(SELECT d.pListRefPaiements  FROM DOSSIER_O d WHERE d.DOSSIERNO = SELF.DOSSIERNO) dlf
@@ -1512,7 +1502,7 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure addLinkListeRendezvous(RefRendezvous REF Rendezvous_t) IS
+    member procedure addLinkListeRendezvous(RefRendezvous REF RENDEZVOUS_T) IS
     BEGIN
         INSERT INTO 
             TABLE(SELECT d.rListRefRendezvous  FROM DOSSIER_O d WHERE d.DOSSIERNO = SELF.DOSSIERNO) 
@@ -1522,7 +1512,7 @@ AS
         WHEN others then
         RAISE;
     END;
-    member procedure deleteLinkListeRendezvous (RefRendezvous REF Rendezvous_t) IS
+    member procedure deleteLinkListeRendezvous (RefRendezvous REF RENDEZVOUS_T) IS
     BEGIN
         DELETE FROM
             TABLE(SELECT d.rListRefRendezvous  FROM DOSSIER_O d WHERE d.DOSSIERNO = SELF.DOSSIERNO) dlf
@@ -1531,7 +1521,7 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure updateLinkListeRendezvous(RefRendezvous1 REF Rendezvous_t, RefRendezvous2 REF Rendezvous_t) IS
+    member procedure updateLinkListeRendezvous(RefRendezvous1 REF RENDEZVOUS_T, RefRendezvous2 REF RENDEZVOUS_T) IS
     BEGIN
         UPDATE
             TABLE(SELECT d.rListRefRendezvous  FROM DOSSIER_O d WHERE d.DOSSIERNO = SELF.DOSSIERNO) dlf
@@ -1541,7 +1531,7 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure createDossier(dossier in Dossier_t) IS
+    member procedure createDossier(dossier IN DOSSIER_T) IS
     BEGIN
         INSERT INTO DOSSIER_O (DOSSIERNO, NOM, DESCRIPTION, DATEOUVERTURE, DATEFERMETURE, STATUT, REFCLIENT, REFNOTAIRE, dListRefDocuments, pListRefPaiements, rListRefRendezvous)
         VALUES (dossier.DOSSIERNO, dossier.NOM, dossier.DESCRIPTION, dossier.DATEOUVERTURE, dossier.DATEFERMETURE, dossier.STATUT, dossier.REFCLIENT, dossier.REFNOTAIRE, dossier.dListRefDocuments, dossier.pListRefPaiements, dossier.rListRefRendezvous);
@@ -1549,15 +1539,13 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    static function getDossier (dossierno number) RETURN dossier_t IS
+    static function getDossier (dossierno1 IN NUMBER) RETURN DOSSIER_T IS
         dossier1 dossier_t;
     BEGIN
-        -- Limiter à une seule ligne avec ROWNUM
         SELECT VALUE(d) 
         INTO dossier1 
         FROM DOSSIER_O d
-        WHERE d.DOSSIERNO = dossierno
-        AND ROWNUM = 1;  -- S'assurer que seule la première ligne est renvoyée
+        WHERE d.DOSSIERNO = dossierno1;
 
         RETURN dossier1;
     EXCEPTION
@@ -1566,7 +1554,7 @@ AS
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20002, 'Erreur inattendue : ' || SQLERRM);
     END;
-    member procedure updateDossier(dossier in Dossier_t) IS
+    member procedure updateDossier(dossier IN DOSSIER_T) IS
     BEGIN
         UPDATE DOSSIER_O d SET 
             d.NOM = dossier.Nom,
@@ -1584,9 +1572,24 @@ AS
         WHEN OTHERS THEN
         RAISE;
     END;
-    member procedure deleteDossier(dossierno NUMBER) IS
+    member procedure deleteDossier(dossierno1 IN NUMBER) IS
+        refdossier1 REF dossier_t;
     BEGIN
-        DELETE FROM DOSSIER_O d WHERE d.dossierno = dossierno;
+        DELETE FROM DOSSIER_O d 
+        WHERE d.dossierno = dossierno1 
+        RETURNING REF(d) INTO refdossier1;
+        
+        UPDATE DOCUMENT_O dc
+        SET dc.RefDossier = null 
+        WHERE dc.RefDossier = refdossier1;
+        
+        UPDATE PAIEMENT_O p
+        SET p.RefDossier = null 
+        WHERE p.RefDossier = refdossier1;
+        
+        UPDATE RENDEZVOUS_O r
+        SET r.RefDossier = null 
+        WHERE r.RefDossier = refdossier1;
     EXCEPTION
         WHEN OTHERS THEN
         RAISE;
@@ -1653,19 +1656,19 @@ BEGIN
     SELECT value(c), ref(c)
     INTO client3, refclient4
     FROM CLIENT_O c
-    WHERE c.CLIENTNO = 10;  -- Remplace 10 par le numéro de client approprié
-
+    WHERE c.CLIENTNO = 10;
+    
     -- Récupère la référence du premier dossier (RefDossier1)
     SELECT ref(d)
     INTO refDossier1
     FROM DOSSIER_O d
-    WHERE d.DOSSIERNO = 16;  -- Remplace 1 par le numéro de dossier approprié
+    WHERE d.DOSSIERNO = 16;
 
     -- Récupère la référence du deuxième dossier (RefDossier2)
     SELECT ref(d)
     INTO refDossier2
     FROM DOSSIER_O d
-    WHERE d.DOSSIERNO = 6;  -- Remplace 2 par le numéro de dossier approprié
+    WHERE d.DOSSIERNO = 6;
 
     -- Appel de la méthode pour mettre à jour le lien du dossier
     client3.updateLinkListeDossiers(refDossier1, refDossier2);
@@ -1744,41 +1747,64 @@ END;
 
 --============================================ Tester la méthode getClient =====================================================
 set serveroutput on;
-declare
+DECLARE
 clientno1 client_o.clientno%type := 11;
 v_client  client_t;
-begin
-    v_client := client_t.getClient(clientno1 );
-    dbms_output.put_line('Nom = '|| v_client.Nom);
-    dbms_output.put_line('Email = '|| v_client.Email);
-exception 
-        when no_data_found then
+BEGIN
+    v_client := client_t.getClient(clientno1);
+    IF v_client.prenom.count > 2 THEN
+        dbms_output.put_line('Nom: '|| v_client.Nom || ' ' || 'Prénom: ' ||  v_client.prenom(1) || ' ' ||  v_client.prenom(2) || ' ' || v_client.prenom(3) || ' ' || 'Email: '|| v_client.Email);
+    END IF; 
+    IF v_client.prenom.count = 2 THEN
+        dbms_output.put_line('Nom: '|| v_client.Nom || ' ' || 'Prénom: ' ||  v_client.prenom(1) || ' ' ||  v_client.prenom(2) || ' ' || 'Email: '|| v_client.Email);
+    END IF;
+    IF v_client.prenom.count < 2 THEN
+        dbms_output.put_line('Nom: '|| v_client.Nom || ' ' || 'Prénom: ' ||  v_client.prenom(1) || ' ' || 'Email: '|| v_client.Email);
+    END IF;    
+EXCEPTION 
+        WHEN no_data_found THEN
          dbms_output.put_line('le client numero :'||clientno1|| ' n''existe pas');
          dbms_output.put_line('code error : '||sqlcode);
          dbms_output.put_line('error message  : '||sqlerrm);
-        when others then
+        WHEN OTHERS THEN
          dbms_output.put_line('error generale');
          dbms_output.put_line(' code error : '||sqlcode);
          dbms_output.put_line(' error message  : '||sqlerrm);
-end;
+END;
 /
 --============================================= Tester la méthode searchAllClient =================================================
 SET SERVEROUTPUT ON;
 DECLARE
-    r_listClients listRefclient_t := listRefclient_t();
-    r_client CLIENT_T;
+    r_listClients listRefclient_t;  -- Liste des références de clients
+    r_client CLIENT_T;              -- Variable pour stocker l'objet client déréférencé
+    c_prenom VARCHAR2(100);
 BEGIN
-    r_listClients := r_client.searchAllClient;
-    for i in r_listClients.first .. r_listClients.last
-    loop
-        dbms_output.put_line('nom = ' || r_listClients(i).nom);
-    end loop;
-exception
-    when no_data_found then
+    -- Appel de la méthode et récupération des références de clients
+    r_listClients := CLIENT_T.searchAllClient;
+
+    -- Parcourir la collection de références et déréférencer chaque client
+    FOR i IN 1 .. r_listClients.count LOOP
+        -- Déréférencer la référence pour obtenir l'objet client
+        SELECT DEREF(r_listClients(i)) INTO r_client FROM dual;
+        -- Afficher le nom du client déréférencé
+        IF r_client.prenom.count > 2 THEN
+            dbms_output.put_line('Nom: ' || r_client.nom || '| ' || 'Prenom: ' || r_client.prenom(1) || ' ' ||  r_client.prenom(2) || ' ' ||  r_client.prenom(3) || '| ' || 'Email: ' || r_client.email);
+        END IF;    
+        IF r_client.prenom.count > 1 THEN
+            dbms_output.put_line('Nom: ' || r_client.nom || '| ' || 'Prenom: ' || r_client.prenom(1) || ' ' ||  r_client.prenom(2) || '| ' || 'Email: ' || r_client.email);
+        END IF;    
+        IF r_client.prenom.count = 1 THEN
+            dbms_output.put_line('Nom: ' || r_client.nom || '| ' || 'Prenom: ' || r_client.prenom(1) || '| ' || 'Email: ' || r_client.email);
+        END IF;
+        
+    END LOOP;
+
+EXCEPTION
+    WHEN no_data_found THEN
         dbms_output.put_line('Liste vide');
         dbms_output.put_line('Code erreur: ' || sqlcode);
         dbms_output.put_line('Message d''erreur: ' || sqlerrm);
-    when no_data_found then
+    WHEN OTHERS THEN
         dbms_output.put_line('Erreur générale');
         dbms_output.put_line('Code erreur: ' || sqlcode);
         dbms_output.put_line('Message d''erreur: ' || sqlerrm);
@@ -1808,6 +1834,8 @@ BEGIN
     
     v_notaire.createNotaire(v_notaire);
     DBMS_OUTPUT.PUT_LINE('Notaire créé avec succès.');
+    
+    COMMIT;
 
     -- 2. Ajouter des dossiers dans la liste des dossiers du notaire
     -- On suppose ici que les dossiers existent déjà dans la table DOSSIER_O
@@ -1821,19 +1849,15 @@ BEGIN
     -- 3. Rechercher un notaire par son numéro
     v_notaireSearch := NOTAIRE_T.getNotaire(6);
     
-    IF v_notaireSearch.NOM IS NOT NULL THEN
-        DBMS_OUTPUT.PUT_LINE('Nom du notaire: ' || v_notaireSearch.NOM);
+    IF v_notaireSearch.prenom.count > 2 THEN
+        dbms_output.put_line('Nom: '|| v_notaireSearch.Nom || ' ' || 'Prénom: ' ||  v_notaireSearch.prenom(1) || ' ' ||  v_notaireSearch.prenom(2) || ' ' || v_notaireSearch.prenom(3) || ' ' || 'Email: '|| v_notaireSearch.Email);
+    END IF; 
+    IF v_notaireSearch.prenom.count = 2 THEN
+        dbms_output.put_line('Nom: '|| v_notaireSearch.Nom || ' ' || 'Prénom: ' ||  v_notaireSearch.prenom(1) || ' ' ||  v_notaireSearch.prenom(2) || ' ' || 'Email: '|| v_notaireSearch.Email);
     END IF;
-    
-    IF v_notaireSearch.PRENOM IS NOT NULL THEN
-        -- Parcourir le varray des prénoms
-        FOR i IN 1 .. v_notaireSearch.PRENOM.COUNT LOOP
-            v_prenom := v_notaireSearch.PRENOM(i);
-            IF v_prenom IS NOT NULL THEN
-                DBMS_OUTPUT.PUT_LINE('Prénom ' || i || ': ' || v_prenom);
-            END IF;
-        END LOOP;
-    END IF;
+    IF v_notaireSearch.prenom.count < 2 THEN
+        dbms_output.put_line('Nom: '|| v_notaireSearch.Nom || ' ' || 'Prénom: ' ||  v_notaireSearch.prenom(1) || ' ' || 'Email: '|| v_notaireSearch.Email);
+    END IF; 
 
     -- 4. Mettre à jour les informations du notaire
     v_notaireSearch.NOM := 'Martin';
@@ -1853,9 +1877,26 @@ BEGIN
     v_notaireSearch.deleteNotaire(6);
     DBMS_OUTPUT.PUT_LINE('Notaire supprimé avec succès.');
 
+    ROLLBACK;
+    
     -- 8. Rechercher tous les notaires
     v_listNotaires := NOTAIRE_T.searchAllNotaire;
-    DBMS_OUTPUT.PUT_LINE('Nombre de notaires trouvés: ' || v_listNotaires.COUNT);
+    -- Parcourir la collection de références et déréférencer chaque notaire
+    FOR i IN 1 .. v_listNotaires.count LOOP
+        -- Déréférencer la référence pour obtenir l'objet notaire
+        SELECT DEREF(v_listNotaires(i)) INTO v_notaire FROM dual;
+        -- Afficher les informations du notaire déréférencé
+        IF v_notaire.prenom.count > 2 THEN
+            dbms_output.put_line('Nom: ' || v_notaire.nom || '| ' || 'Prenom: ' || v_notaire.prenom(1) || ' ' ||  v_notaire.prenom(2) || ' ' ||  v_notaire.prenom(3) || '| ' || 'Email: ' || v_notaire.email);
+        END IF;    
+        IF v_notaire.prenom.count > 1 THEN
+            dbms_output.put_line('Nom: ' || v_notaire.nom || '| ' || 'Prenom: ' || v_notaire.prenom(1) || ' ' ||  v_notaire.prenom(2) || '| ' || 'Email: ' || v_notaire.email);
+        END IF;    
+        IF v_notaire.prenom.count = 1 THEN
+            dbms_output.put_line('Nom: ' || v_notaire.nom || '| ' || 'Prenom: ' || v_notaire.prenom(1) || '| ' || 'Email: ' || v_notaire.email);
+        END IF;
+        
+    END LOOP;
 
 EXCEPTION
     WHEN OTHERS THEN
@@ -1868,13 +1909,17 @@ DECLARE
     document_ref DOCUMENT_T;
     new_document DOCUMENT_T;
     dossier_ref REF DOSSIER_T;
+    v_listDocuments LISTREFDOCUMENTS_T;
 BEGIN
     -- Tester la méthode createDocument
-    SELECT REF(d) INTO dossier_ref FROM DOSSIER_O d WHERE d.DOSSIERNO = 10; -- Sélectionner un dossier existant
+    SELECT REF(d) INTO dossier_ref FROM DOSSIER_O d WHERE d.DOSSIERNO = 16; -- Sélectionner un dossier existant
     new_document := DOCUMENT_T(16, 'Contrat de vente', 'PDF', 'Contenu du contrat...', SYSDATE, dossier_ref);
     new_document.createDocument(new_document);
+    
     DBMS_OUTPUT.PUT_LINE('Document créé avec succès.');
-
+    
+    COMMIT;
+    
     -- Tester la méthode searchDocument
     document_ref := DOCUMENT_T.searchDocument(16);
     IF document_ref IS NOT NULL THEN
@@ -1885,14 +1930,24 @@ BEGIN
     new_document := DOCUMENT_T(16, 'Contrat de location', 'DOCX', 'Nouveau contenu...', SYSDATE, dossier_ref);
     document_ref.updateDocument(new_document);
     DBMS_OUTPUT.PUT_LINE('Document mis à jour avec succès.');
+    
+    COMMIT;
 
     -- Tester la méthode deleteDocument
     document_ref.deleteDocument(16);
     DBMS_OUTPUT.PUT_LINE('Document supprimé avec succès.');
 
+    ROLLBACK;
+    
     -- Tester la méthode searchAllDocument
-    FOR i IN 1..DOCUMENT_T.searchAllDocument.COUNT LOOP
-        DBMS_OUTPUT.PUT_LINE('Document trouvé avec REF : ' || DOCUMENT_T.searchAllDocument(i));
+    v_listDocuments := DOCUMENT_T.searchAllDocument;
+    
+    -- Parcourir la collection de références et déréférencer chaque document
+    FOR i IN 1 .. v_listDocuments.count LOOP
+        -- Déréférencer la référence pour obtenir l'objet document
+        SELECT DEREF(v_listDocuments(i)) INTO document_ref FROM dual;
+        -- Afficher les informations du Document déréférencé
+        DBMS_OUTPUT.PUT_LINE('Titre Document : ' || document_ref.TITRE || ', ' || 'Type Document : ' || document_ref.TYPE_DOC);
     END LOOP;
 
 EXCEPTION
@@ -1901,16 +1956,20 @@ EXCEPTION
 END;
 /
 --==========================================================================================================================================
+--============= Tester chaque méthode pour le type RENDEZVOUS_T =======================--
 DECLARE
-    rendezvous_ref REF RENDEZVOUS_T;
+    rendezvous_ref RENDEZVOUS_T;
     new_rendezvous RENDEZVOUS_T;
     dossier_ref REF DOSSIER_T;
+    v_listRendezvous listRefRendevous_t;
 BEGIN
     -- Tester la méthode createRendezvous
-    SELECT REF(d) INTO dossier_ref FROM DOSSIER_O d WHERE d.DOSSIERNO = 11; -- Sélectionner un dossier existant
-    new_rendezvous := RENDEZVOUS_T(11, TO_DATE('2024-10-01', 'YYYY-MM-DD'), '10:00', 'Paris', 'Réunion d\''affaires', dossier_ref);
+    SELECT REF(d) INTO dossier_ref FROM DOSSIER_O d WHERE d.DOSSIERNO = 16; -- Sélectionner un dossier existant
+    new_rendezvous := RENDEZVOUS_T(11, TO_DATE('2024-10-01', 'YYYY-MM-DD'), TO_DATE('10:00', 'HH24:MI'), 'Paris', 'Réunion d''affaires', dossier_ref);
     new_rendezvous.createRendezvous(new_rendezvous);
     DBMS_OUTPUT.PUT_LINE('Rendez-vous créé avec succès.');
+    
+    COMMIT;
 
     -- Tester la méthode searchRendezvous
     rendezvous_ref := RENDEZVOUS_T.searchRendezvous(11);
@@ -1919,36 +1978,48 @@ BEGIN
     END IF;
 
     -- Tester la méthode updateRendezvous
-    new_rendezvous := RENDEZVOUS_T(11, TO_DATE('2024-10-01', 'YYYY-MM-DD'), '11:00', 'Lyon', 'Réunion modifiée', dossier_ref);
+    new_rendezvous := RENDEZVOUS_T(11, TO_DATE('2024-10-01', 'YYYY-MM-DD'), TO_DATE('11:00', 'HH24:MI'), 'Lyon', 'Réunion modifiée', dossier_ref);
     rendezvous_ref.updateRendezvous(new_rendezvous);
     DBMS_OUTPUT.PUT_LINE('Rendez-vous mis à jour avec succès.');
-
+    
+    COMMIT;
+    
     -- Tester la méthode deleteRendezvous
     rendezvous_ref.deleteRendezvous(11);
     DBMS_OUTPUT.PUT_LINE('Rendez-vous supprimé avec succès.');
-
+    
+    ROLLBACK;
+    
     -- Tester la méthode searchAllRendezvous
-    FOR i IN 1..RENDEZVOUS_T.searchAllRendezvous.COUNT LOOP
-        DBMS_OUTPUT.PUT_LINE('Rendez-vous trouvé avec REF : ' || RENDEZVOUS_T.searchAllRendezvous(i));
+    v_listRendezvous := RENDEZVOUS_T.searchAllRendezvous;
+    -- Parcourir la collection de références et déréférencer chaque rendezvous
+    FOR i IN 1 .. v_listRendezvous.count LOOP
+        -- Déréférencer la référence pour obtenir l'objet document
+        SELECT DEREF(v_listRendezvous(i)) INTO rendezvous_ref FROM dual;
+        -- Afficher les informations du Rendezvous déréférencé
+        DBMS_OUTPUT.PUT_LINE('Description : ' || rendezvous_ref.DESCRIPTION || ', ' || 'Lieu : ' || rendezvous_ref.LIEU);
     END LOOP;
 
 EXCEPTION
     WHEN OTHERS THEN
         DBMS_OUTPUT.PUT_LINE('Erreur : ' || SQLERRM);
 END;
-
+/
 --==============================================================================================================================================
 --============= Tester chaque méthode pour le type PAIEMENT_T =======================--
 DECLARE
-    paiement_ref REF PAIEMENT_T;
+    paiement_ref PAIEMENT_T;
     new_paiement PAIEMENT_T;
     dossier_ref REF DOSSIER_T;
+    v_listPaiements listRefPaiements_t;
 BEGIN
     -- Tester la méthode createPaiement
     SELECT REF(d) INTO dossier_ref FROM DOSSIER_O d WHERE d.DOSSIERNO = 16; -- Sélectionner un dossier existant
     new_paiement := PAIEMENT_T(16, 150.75, 'Carte de crédit', 'Paiement pour consultation', SYSDATE, dossier_ref);
     new_paiement.createPaiement(new_paiement);
     DBMS_OUTPUT.PUT_LINE('Paiement créé avec succès.');
+    
+    COMMIT;
 
     -- Tester la méthode searchPaiement
     paiement_ref := PAIEMENT_T.searchPaiement(16);
@@ -1960,14 +2031,23 @@ BEGIN
     new_paiement := PAIEMENT_T(16, 200.50, 'Virement bancaire', 'Paiement modifié', SYSDATE, dossier_ref);
     paiement_ref.updatePaiement(new_paiement);
     DBMS_OUTPUT.PUT_LINE('Paiement mis à jour avec succès.');
+    
+    COMMIT;
 
     -- Tester la méthode deletePaiement
     paiement_ref.deletePaiement(16);
     DBMS_OUTPUT.PUT_LINE('Paiement supprimé avec succès.');
+    
+    ROLLBACK;
 
     -- Tester la méthode searchAllPaiement
-    FOR i IN 1..PAIEMENT_T.searchAllPaiement.COUNT LOOP
-        DBMS_OUTPUT.PUT_LINE('Paiement trouvé avec REF : ' || PAIEMENT_T.searchAllPaiement(i));
+    v_listPaiements := PAIEMENT_T.searchAllPaiement;
+    -- Parcourir la collection de références et déréférencer chaque paiement
+    FOR i IN 1 .. v_listPaiements.count LOOP
+        -- Déréférencer la référence pour obtenir l'objet paiement
+        SELECT DEREF(v_listPaiements(i)) INTO paiement_ref FROM dual;
+        -- Afficher les informations du Paiement déréférencé
+        DBMS_OUTPUT.PUT_LINE('METHODE : ' || paiement_ref.METHODE || ', ' || 'DESC PAIEMENT : ' || paiement_ref.DESC_PAIEMENT);
     END LOOP;
 
 EXCEPTION
@@ -1978,25 +2058,29 @@ END;
 --===============================================================================================================================
 --============= Tester chaque méthode pour le type DOSSIER_T =======================--
 DECLARE
-    dossier_ref REF DOSSIER_T;
+    dossier_ref DOSSIER_T;
     client_ref REF CLIENT_T;
     notaire_ref REF NOTAIRE_T;
     document_ref REF DOCUMENT_T;
     paiement_ref REF PAIEMENT_T;
     rendezvous_ref REF RENDEZVOUS_T;
     new_dossier DOSSIER_T;
-    dossier_num NUMBER := 17; -- Numéro du dossier à tester
+    dossier_num NUMBER := 16; -- Numéro du dossier à tester
+    v_listDossiers listRefDossiers_t;
 BEGIN
     -- Tester la méthode createDossier
-    SELECT REF(c) INTO client_ref FROM CLIENT_O c WHERE c.CLIENTNO = 10; -- Sélectionner un client existant
-    SELECT REF(n) INTO notaire_ref FROM NOTAIRE_O p WHERE p.NOTAIRENO = 5; -- Sélectionner un notaire existant
-    SELECT REF(c) INTO document_ref FROM DOCUMENT_O c WHERE c.DOCUMENTNO = 1; -- Sélectionner un document existant
-    SELECT REF(p) INTO paiement_ref FROM PAIEMENT_O p WHERE p.PAIEMENTNO = 1; -- Sélectionner un paiement existant
-    SELECT REF(r) INTO rendezvous_ref FROM RENDEZVOUS_O r WHERE r.RENDEZVOUSNO = 1; -- Sélectionner un rendezvous existant
+    SELECT REF(c) INTO client_ref FROM CLIENT_O c WHERE c.CLIENTNO = 11; -- Sélectionner un client existant
+    SELECT REF(n) INTO notaire_ref FROM NOTAIRE_O n WHERE n.NOTAIRENO = 6; -- Sélectionner un notaire existant
+    SELECT REF(d) INTO document_ref FROM DOCUMENT_O d WHERE d.DOCUMENTNO = 16; -- Sélectionner un document existant
+    SELECT REF(p) INTO paiement_ref FROM PAIEMENT_O p WHERE p.PAIEMENTNO = 16; -- Sélectionner un paiement existant
+    SELECT REF(r) INTO rendezvous_ref FROM RENDEZVOUS_O r WHERE r.RENDEZVOUSNO = 11; -- Sélectionner un rendezvous existant
     
     new_dossier := DOSSIER_T(dossier_num, 'Dossier de vente', 'Partenariat commercial', TO_DATE('2023-08-10', 'YYYY-MM-DD'), TO_DATE('2023-09-10', 'YYYY-MM-DD'), 'En cours', client_ref, notaire_ref, listRefDocuments_t(), listRefPaiements_t(), listRefRendevous_t());
-    new_dossier.createDossier(new_dossier);
+    new_dossier.updateDossier(new_dossier);
+    
     DBMS_OUTPUT.PUT_LINE('Dossier créé avec succès.');
+    
+    COMMIT;
 
     -- Tester la méthode getDossier
     dossier_ref := DOSSIER_T.getDossier(dossier_num);
@@ -2004,46 +2088,46 @@ BEGIN
         DBMS_OUTPUT.PUT_LINE('Dossier trouvé : ' || dossier_ref.NOM || ' ' || dossier_ref.DESCRIPTION);
     END IF;
 
-    -- Tester la méthode updateDossier
-    new_dossier := DOSSIER_T(dossier_num, 'Dossier de gestion', 'Partenariat gestionnaire', TO_DATE('2023-08-10', 'YYYY-MM-DD'), TO_DATE('2023-09-10', 'YYYY-MM-DD'), 'En cours', client_ref, notaire_ref, listRefDocuments_t(), listRefPaiements_t(), listRefRendevous_t());
-    dossier_ref.updateDossier(new_dossier);
-    DBMS_OUTPUT.PUT_LINE('Dossier mis à jour avec succès.');
-
     -- Tester la méthode addLinkListeDocuments
     dossier_ref.addLinkListeDocuments(document_ref);
     DBMS_OUTPUT.PUT_LINE('Document ajouté au dossier.');
-
-    -- Tester la méthode deleteLinkListeDocuments
-    dossier_ref.deleteLinkListeDocuments(document_ref);
-    DBMS_OUTPUT.PUT_LINE('Document supprimé du dossier.');
-
-    -- Tester la méthode updateLinkListeDocuments
-    dossier_ref.updateLinkListeDocuments(document_ref, document_ref); -- Supposons que nous mettons à jour avec un nouveau document
-    DBMS_OUTPUT.PUT_LINE('Document mis à jour dans le dossier.');
-
+    
     -- Tester la méthode addLinkListePaiements
     dossier_ref.addLinkListePaiements(paiement_ref);
     DBMS_OUTPUT.PUT_LINE('Paiement ajouté au dossier.');
-
-    -- Tester la méthode deleteLinkListePaiements
-    dossier_ref.deleteLinkListePaiements(paiement_ref);
-    DBMS_OUTPUT.PUT_LINE('Paiement supprimé du dossier.');
-
+    
     -- Tester la méthode addLinkListeRendezvous
     dossier_ref.addLinkListeRendezvous(rendezvous_ref);
     DBMS_OUTPUT.PUT_LINE('Rendez-vous ajouté au dossier.');
 
+    COMMIT;
+    
+    -- Tester la méthode deleteLinkListeDocuments
+    dossier_ref.deleteLinkListeDocuments(document_ref);
+    DBMS_OUTPUT.PUT_LINE('Document supprimé du dossier.');
+    
+    -- Tester la méthode deleteLinkListePaiements
+    dossier_ref.deleteLinkListePaiements(paiement_ref);
+    DBMS_OUTPUT.PUT_LINE('Paiement supprimé du dossier.');
+    
     -- Tester la méthode deleteLinkListeRendezvous
     dossier_ref.deleteLinkListeRendezvous(rendezvous_ref);
     DBMS_OUTPUT.PUT_LINE('Rendez-vous supprimé du dossier.');
-
+    
     -- Tester la méthode deleteDossier
     dossier_ref.deleteDossier(dossier_num);
     DBMS_OUTPUT.PUT_LINE('Dossier supprimé avec succès.');
 
+    ROLLBACK;
+
     -- Tester la méthode searchAllDossier
-    FOR i IN 1..DOSSIER_T.searchAllDossier.COUNT LOOP
-        DBMS_OUTPUT.PUT_LINE('Dossier trouvé avec REF : ' || DOSSIER_T.searchAllDossier(i));
+    v_listDossiers := DOSSIER_T.searchAllDossier;
+    -- Parcourir la collection de références et déréférencer chaque dossier
+    FOR i IN 1 .. v_listDossiers.count LOOP
+        -- Déréférencer la référence pour obtenir l'objet dossier
+        SELECT DEREF(v_listDossiers(i)) INTO dossier_ref FROM dual;
+        -- Afficher les informations du dossier déréférencé
+        DBMS_OUTPUT.PUT_LINE('Nom : ' || dossier_ref.NOM || ', ' || 'Description : ' || dossier_ref.DESCRIPTION);
     END LOOP;
 
 EXCEPTION
