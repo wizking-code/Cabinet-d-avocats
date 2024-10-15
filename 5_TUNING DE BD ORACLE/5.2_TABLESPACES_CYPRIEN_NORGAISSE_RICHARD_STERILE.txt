@@ -1,0 +1,7 @@
+--Créer un tablespace ayant le nom de votre projet.
+
+CREATE TABLESPACE notaires_ts
+DATAFILE 'C:\oracle\oradata\ORCL\notaires_data01.dbf' SIZE 100M
+AUTOEXTEND ON NEXT 10M MAXSIZE 1G
+EXTENT MANAGEMENT LOCAL
+SEGMENT SPACE MANAGEMENT AUTO;

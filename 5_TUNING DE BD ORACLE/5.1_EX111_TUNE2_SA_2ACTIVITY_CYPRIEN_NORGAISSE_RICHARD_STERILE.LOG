@@ -1,0 +1,671 @@
+SQL> create or replace procedure execSegmentAdvisor(
+  2  taskName 	 IN	 varchar2,		-- Task name
+  3  taskDesc	 IN  varchar2 :=NULL, -- Task Description
+  4  objectType 	 IN 	 varchar2,		-- TABLE, TABLESPACE or SEGMENT
+  5  objectName	 IN 	 varchar2,		-- Object Name
+  6  objectOwner	 IN 	 varchar2:= NULL	-- ObjectOwner
+  7  )
+  8  authid current_user as
+  9  obj_id  number;
+ 10  attrib1	 varchar2(30);
+ 11  attrib2	 varchar2(30):=NULL;
+ 12  badObjectType	  exception;
+ 13  pragma exception_init(badObjectType, -20000);
+ 14  begin
+ 15  	IF objectType NOT IN ('TABLE',  'TABLESPACE') THEN
+ 16  		raise_application_error(-20000, 'L''objet ? analyser n''est pas : un segment, une table et un tablespace');
+ 17  		raise badObjectType;
+ 18  	end if;
+ 19  
+ 20  	--advisor_name => 'Segment Advisor',
+ 21  	dbms_advisor.create_task (
+ 22  		advisor_name => 'Segment Advisor',
+ 23  		task_name    => taskName ,
+ 24  		task_desc    => taskDesc
+ 25  	);
+ 26  	if objectType = 'TABLE' THEN
+ 27  		attrib1:=objectOwner;
+ 28  		attrib2:=objectName;
+ 29  	elsif objectType='TABLESPACE' THEN
+ 30  		attrib1:=objectName;
+ 31  		attrib2:=NULL;
+ 32  	end if;
+ 33  
+ 34  	dbms_advisor.create_object (
+ 35  		task_name   => taskName,
+ 36  		object_type => objectType,
+ 37  		attr1       => attrib1,
+ 38  		attr2       => attrib2,
+ 39  		attr3       => NULL,
+ 40  		attr4       => NULL,
+ 41  		attr5       => NULL,
+ 42  		object_id   => obj_id
+ 43  	);
+ 44  
+ 45  	dbms_advisor.set_task_parameter(
+ 46  		task_name   	=> taskName,
+ 47  		parameter 		=> 'recommend_all',
+ 48  		value       	=> 'TRUE'
+ 49  	);
+ 50  	dbms_advisor.execute_task(taskName);
+ 51  	Exception
+ 52  		WHEN badObjectType THEN
+ 53  			raise badObjectType;
+ 54  		WHEN others THEN
+ 55  			raise ;
+ 56  
+ 57  end;
+ 58  /
+
+Procedure created.
+
+SQL> drop table allObjects;
+
+Table dropped.
+
+SQL> create table allObjects as select *
+  2  from all_objects, (select level l
+  3  	from dual connect by level <= 2);
+
+Table created.
+
+SQL> select sum(bytes)from USER_SEGMENTS
+  2  where segment_name = 'ALLOBJECTS';
+
+SUM(BYTES)                                                                                                                                                                                              
+----------                                                                                                                                                                                              
+  26214400                                                                                                                                                                                              
+
+SQL> delete from ALLOBJECTS;
+
+139560 rows deleted.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> select sum(bytes)from USER_SEGMENTS
+  2  where segment_name = 'ALLOBJECTS';
+
+SUM(BYTES)                                                                                                                                                                                              
+----------                                                                                                                                                                                              
+  26214400                                                                                                                                                                                              
+
+SQL> execute  dbms_advisor.delete_task('TASK_SA_ALLOBJECTS');
+
+PL/SQL procedure successfully completed.
+
+SQL> set serveroutput on
+SQL> begin
+  2  execSegmentAdvisor(
+  3  taskName => 'TASK_SA_ALLOBJECTS',		-- Task name
+  4  taskDesc => 'Analyse avec SA de la table ALLOBJECTS', -- Task Description
+  5  objectType =>'TABLE',		-- TABLE, TABLESPACE or SEGMENT
+  6  objectName=>'ALLOBJECTS',		-- Object Name
+  7  objectOwner=>'&MYPDBUSER'	-- ObjectOwner
+  8  ) ;
+  9  Exception
+ 10  WHEN others then
+ 11  dbms_output.put_line('Sqlcode='|| sqlcode);
+ 12  dbms_output.put_line('Sqlerrm='|| sqlerrm);
+ 13  end;
+ 14  /
+old   7: objectOwner=>'&MYPDBUSER'	-- ObjectOwner
+new   7: objectOwner=>'ORS2'	-- ObjectOwner
+
+PL/SQL procedure successfully completed.
+
+SQL> set linesize 200
+SQL> set pagesize 500
+SQL> col recommendations format a40
+SQL> col segment_name format a15
+SQL> SELECT segment_name,round(allocated_space/1024/1024,1) alloc_mb,
+  2  round( used_space/1024/1024, 1 ) used_mb,
+  3  round( reclaimable_space/1024/1024) reclaim_mb,
+  4  round(reclaimable_space/allocated_space*100,0) pctsave,
+  5  recommendations
+  6  FROM TABLE(dbms_space.asa_recommendations())
+  7  where segment_owner = '&MYPDBUSER'
+  8  ;
+old   7: where segment_owner = '&MYPDBUSER'
+new   7: where segment_owner = 'ORS2'
+
+SEGMENT_NAME      ALLOC_MB    USED_MB RECLAIM_MB    PCTSAVE RECOMMENDATIONS                                                                                                                             
+--------------- ---------- ---------- ---------- ---------- ----------------------------------------                                                                                                    
+ALLOBJECTS              25          0         25        100 Enable row movement of the table ORS2.AL                                                                                                    
+                                                            LOBJECTS and perform shrink, estimated s                                                                                                    
+                                                            avings is 26206208 bytes.                                                                                                                   
+                                                                                                                                                                                                        
+ALLOBJECTS2             25          0         25        100 Enable row movement of the table ORS2.AL                                                                                                    
+                                                            LOBJECTS2 and perform shrink, estimated                                                                                                     
+                                                            savings is 26206208 bytes.                                                                                                                  
+                                                                                                                                                                                                        
+
+SQL> col task_name format A10
+SQL> col PARENT_REC_IDS format A40
+SQL> col  BENEFIT_TYPE format A40
+SQL> set linesize 200
+SQL> select TASK_NAME, type, RANK   , PARENT_REC_IDS, BENEFIT_TYPE
+  2  from DBA_ADVISOR_RECOMMENDATIONS
+  3  where task_name='TASK_SA_ALLOBJECTS';
+
+TASK_NAME  TYPE                                 RANK PARENT_REC_IDS                           BENEFIT_TYPE                                                                                              
+---------- ------------------------------ ---------- ---------------------------------------- ----------------------------------------                                                                  
+TASK_SA_AL                                                                                    Enable row movement of the table ORS2.AL                                                                  
+LOBJECTS                                                                                      LOBJECTS and perform shrink, estimated s                                                                  
+                                                                                              avings is 26206208 bytes.                                                                                 
+                                                                                                                                                                                                        
+
+SQL> col task_name format A10
+SQL> col message format A40
+SQL> col more_info format A40
+SQL> col impact_type format A40
+SQL> set linesize 200
+SQL> select TASK_NAME, MESSAGE, impact_type, more_info
+  2  from DBA_ADVISOR_FINDINGS
+  3  where task_name='TASK_SA_ALLOBJECTS';
+
+TASK_NAME  MESSAGE                                  IMPACT_TYPE                              MORE_INFO                                                                                                  
+---------- ---------------------------------------- ---------------------------------------- ----------------------------------------                                                                   
+TASK_SA_AL Enable row movement of the table ORS2.AL                                          Allocated Space:26214400: Used Space:819                                                                   
+LOBJECTS   LOBJECTS and perform shrink, estimated s                                          2: Reclaimable Space :26206208:                                                                            
+           avings is 26206208 bytes.                                                                                                                                                                    
+                                                                                                                                                                                                        
+
+SQL> Col command format A20
+SQL> Col attr1 format A40
+SQL> Set long 500
+SQL> SELECT rec_id, action_id, command, attr1
+  2  FROM user_advisor_actions
+  3  WHERE task_name = 'TASK_SA_ALLOBJECTS'
+  4  ORDER BY rec_id, action_id;
+
+    REC_ID  ACTION_ID COMMAND              ATTR1                                                                                                                                                        
+---------- ---------- -------------------- ----------------------------------------                                                                                                                     
+         1          1 SHRINK SPACE         alter table "ORS2"."ALLOBJECTS" shrink s                                                                                                                     
+                                           pace                                                                                                                                                         
+                                                                                                                                                                                                        
+
+SQL> Alter table ALLOBJECTS enable row movement;
+
+Table altered.
+
+SQL> ALTER TABLE ALLOBJECTS SHRINK SPACE cascade;
+
+Table altered.
+
+SQL> select sum(bytes)from USER_SEGMENTS
+  2  where segment_name = 'ALLOBJECTS';
+
+SUM(BYTES)                                                                                                                                                                                              
+----------                                                                                                                                                                                              
+     65536                                                                                                                                                                                              
+
+SQL> drop table allObjects2;
+
+Table dropped.
+
+SQL> create table allObjects2 as select *
+  2  from all_objects, (select level l from dual connect by level <= 2)
+  3  ;
+
+Table created.
+
+SQL> select sum(bytes)from USER_SEGMENTS
+  2  where segment_name = 'ALLOBJECTS2';
+
+SUM(BYTES)                                                                                                                                                                                              
+----------                                                                                                                                                                                              
+  26214400                                                                                                                                                                                              
+
+SQL> delete from ALLOBJECTS2;
+
+139560 rows deleted.
+
+SQL> commit;
+
+Commit complete.
+
+SQL> select sum(bytes)from USER_SEGMENTS
+  2  where segment_name = 'ALLOBJECTS2';
+
+SUM(BYTES)                                                                                                                                                                                              
+----------                                                                                                                                                                                              
+  26214400                                                                                                                                                                                              
+
+SQL> execute dbms_advisor.delete_task('TASK_SA_TS_USERS');
+
+PL/SQL procedure successfully completed.
+
+SQL> set serveroutput on
+SQL> begin
+  2  execSegmentAdvisor(
+  3  taskName => 'TASK_SA_TS_USERS',		-- Task name
+  4  taskDesc => 'Analyse avec SA du tablespace USERS', -- Task Description
+  5  objectType =>'TABLESPACE',		-- TABLE OR TABLESPACE
+  6  objectName=>'USERS',		-- Object Name
+  7  objectOwner=>'&MYPDBUSER'	-- ObjectOwner
+  8  ) ;
+  9  Exception
+ 10  WHEN others then
+ 11  dbms_output.put_line('Sqlcode='|| sqlcode);
+ 12  dbms_output.put_line('Sqlerrm='|| sqlerrm);
+ 13  end;
+ 14  
+ 15  /
+old   7: objectOwner=>'&MYPDBUSER'	-- ObjectOwner
+new   7: objectOwner=>'ORS2'	-- ObjectOwner
+
+PL/SQL procedure successfully completed.
+
+SQL> col recommendations format a40
+SQL> col segment_name format a15
+SQL> SELECT segment_name,round(allocated_space/1024/1024,1) alloc_mb,
+  2  round( used_space/1024/1024, 1 ) used_mb,
+  3  round( reclaimable_space/1024/1024) reclaim_mb,
+  4  round(reclaimable_space/allocated_space*100,0) pctsave,
+  5  recommendations
+  6  FROM TABLE(dbms_space.asa_recommendations());
+
+SEGMENT_NAME      ALLOC_MB    USED_MB RECLAIM_MB    PCTSAVE RECOMMENDATIONS                                                                                                                             
+--------------- ---------- ---------- ---------- ---------- ----------------------------------------                                                                                                    
+ALLOBJECTS2             25          0         25        100 Enable row movement of the table ORS2.AL                                                                                                    
+                                                            LOBJECTS2 and perform shrink, estimated                                                                                                     
+                                                            savings is 26206208 bytes.                                                                                                                  
+                                                                                                                                                                                                        
+
+SQL> SET LINESIZE 250
+SQL> set pagesize 300
+SQL> COLUMN task_name FORMAT A18
+SQL> COLUMN object_type FORMAT A15
+SQL> COLUMN schema FORMAT A15
+SQL> COLUMN object_name FORMAT A20
+SQL> COLUMN message FORMAT A30
+SQL> COLUMN more_info FORMAT A30
+SQL> SELECT f.task_name,
+  2         f.impact,
+  3         o.type AS object_type,
+  4         o.attr1 AS schema,
+  5         o.attr2 AS object_name,
+  6         f.message,
+  7         f.more_info
+  8  FROM   dba_advisor_findings f
+  9         JOIN dba_advisor_objects o
+ 10  	   ON f.object_id = o.object_id
+ 11  	   AND f.task_name = o.task_name
+ 12  WHERE  f.task_name ='TASK_SA_TS_USERS';
+
+TASK_NAME              IMPACT OBJECT_TYPE     SCHEMA          OBJECT_NAME          MESSAGE                        MORE_INFO                                                                                                                               
+------------------ ---------- --------------- --------------- -------------------- ------------------------------ ------------------------------                                                                                                          
+TASK_SA_TS_USERS              TABLE           ORS2            R_DEPT               The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:8192: Reclaimable Space :5                                                                                                          
+                                                                                                                  7344:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              TABLE           ORS2            R_EMPLOYE            The free space in the object i Allocated Space:28311552: Used                                                                                                          
+                                                                                   s less than 10MB.               Space:27443059: Reclaimable S                                                                                                          
+                                                                                                                  pace :868493:                                                                                                                           
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              TABLE           ORS2            DEPT4                The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:8192: Reclaimable Space :5                                                                                                          
+                                                                                                                  7344:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              TABLE           ORS2            EMP4                 The free space in the object i Allocated Space:67108864: Used                                                                                                          
+                                                                                   s less than 10MB.               Space:65160770: Reclaimable S                                                                                                          
+                                                                                                                  pace :1948094:                                                                                                                          
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              TABLE           ORS2            IDEPT4               The free space in the object i Allocated Space:62914560: Used                                                                                                          
+                                                                                   s less than 10MB.               Space:55844228: Reclaimable S                                                                                                          
+                                                                                                                  pace :7070332:                                                                                                                          
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              TABLE           ORS2            IEMP4                The free space in the object i Allocated Space:62914560: Used                                                                                                          
+                                                                                   s less than 10MB.               Space:55844228: Reclaimable S                                                                                                          
+                                                                                                                  pace :7070332:                                                                                                                          
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              TABLE           ORS2            HDEPT4               The object has some free space Allocated Space:75497472: Used                                                                                                          
+                                                                                    but cannot be shrunk because   Space:59241984: Reclaimable S                                                                                                          
+                                                                                   ORA-10653: Table is in a clust pace :16255488:                                                                                                                         
+                                                                                   er.                                                                                                                                                                    
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              TABLE           ORS2            HEMP4                The object has some free space Allocated Space:75497472: Used                                                                                                          
+                                                                                    but cannot be shrunk because   Space:59241984: Reclaimable S                                                                                                          
+                                                                                   ORA-10653: Table is in a clust pace :16255488:                                                                                                                         
+                                                                                   er.                                                                                                                                                                    
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              TABLE           ORS2            ALLOBJECTS           The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:8192: Reclaimable Space :5                                                                                                          
+                                                                                                                  7344:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              TABLE           ORS2            ALLOBJECTS2          Enable row movement of the tab Allocated Space:26214400: Used                                                                                                          
+                                                                                   le ORS2.ALLOBJECTS2 and perfor  Space:8192: Reclaimable Space                                                                                                          
+                                                                                   m shrink, estimated savings is  :26206208:                                                                                                                             
+                                                                                    26206208 bytes.                                                                                                                                                       
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_DEPT_DEPTNO       The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1081: Reclaimable Space :6                                                                                                          
+                                                                                                                  4455:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            IDX_BIGDEPT2_DNAME   The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1100: Reclaimable Space :6                                                                                                          
+                                                                                                                  4436:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            SYS_C008460          The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1148: Reclaimable Space :6                                                                                                          
+                                                                                                                  4388:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            SYS_C008459          The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1148: Reclaimable Space :6                                                                                                          
+                                                                                                                  4388:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_BIGODEPT2_DEPTNO  The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1081: Reclaimable Space :6                                                                                                          
+                                                                                                                  4455:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            IDX_R_DEPT_DNAME     The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1100: Reclaimable Space :6                                                                                                          
+                                                                                                                  4436:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_R_DEPT_DEPTNO     The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1081: Reclaimable Space :6                                                                                                          
+                                                                                                                  4455:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_R_EMPLOYE_EMPNO   The free space in the object i Allocated Space:8388608: Used                                                                                                           
+                                                                                   s less than 10MB.              Space:5775835: Reclaimable Spa                                                                                                          
+                                                                                                                  ce :2612773:                                                                                                                            
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            IDX_DEPT_DNAME       The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1100: Reclaimable Space :6                                                                                                          
+                                                                                                                  4436:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            SYS_C008442          The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1148: Reclaimable Space :6                                                                                                          
+                                                                                                                  4388:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            SYS_C008441          The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1148: Reclaimable Space :6                                                                                                          
+                                                                                                                  4388:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            IDX_EMPLOYE_REFDEPT  The free space in the object i Allocated Space:13631488: Used                                                                                                          
+                                                                                   s less than 10MB.               Space:10400562: Reclaimable S                                                                                                          
+                                                                                                                  pace :3230926:                                                                                                                          
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            SYS_C008453          The free space in the object i Allocated Space:12582912: Used                                                                                                          
+                                                                                   s less than 10MB.               Space:9806309: Reclaimable Sp                                                                                                          
+                                                                                                                  ace :2776603:                                                                                                                           
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_EMPLOYE_EMPNO     The free space in the object i Allocated Space:5242880: Used                                                                                                           
+                                                                                   s less than 10MB.              Space:5091297: Reclaimable Spa                                                                                                          
+                                                                                                                  ce :151583:                                                                                                                             
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            SYS_FK0000076814N000 The free space in the object i Allocated Space:14680064: Used                                                                                                          
+                                                              06$                  s less than 10MB.               Space:10294303: Reclaimable S                                                                                                          
+                                                                                                                  pace :4385761:                                                                                                                          
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            SYS_C008471          The free space in the object i Allocated Space:12582912: Used                                                                                                          
+                                                                                   s less than 10MB.               Space:9605648: Reclaimable Sp                                                                                                          
+                                                                                                                  ace :2977264:                                                                                                                           
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_BIGOEMP2_EMPNO    The free space in the object i Allocated Space:5242880: Used                                                                                                           
+                                                                                   s less than 10MB.              Space:5091297: Reclaimable Spa                                                                                                          
+                                                                                                                  ce :151583:                                                                                                                             
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            SYS_FK0000076828N000 The free space in the object i Allocated Space:15728640: Used                                                                                                          
+                                                              06$                  s less than 10MB.               Space:10398613: Reclaimable S                                                                                                          
+                                                                                                                  pace :5330027:                                                                                                                          
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            IDX_R_EMPLOYE_ENAME  The free space in the object i Allocated Space:10485760: Used                                                                                                          
+                                                                                   s less than 10MB.               Space:7059191: Reclaimable Sp                                                                                                          
+                                                                                                                  ace :3426569:                                                                                                                           
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            IDX_R_EMPLOYE_DEPTNO The free space in the object i Allocated Space:7340032: Used                                                                                                           
+                                                                                   s less than 10MB.              Space:5544081: Reclaimable Spa                                                                                                          
+                                                                                                                  ce :1795951:                                                                                                                            
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_DEPT4             The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1078: Reclaimable Space :6                                                                                                          
+                                                                                                                  4458:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_EMP4              The free space in the object i Allocated Space:20971520: Used                                                                                                          
+                                                                                   s less than 10MB.               Space:20561064: Reclaimable S                                                                                                          
+                                                                                                                  pace :410456:                                                                                                                           
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_IDEPT4            The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1078: Reclaimable Space :6                                                                                                          
+                                                                                                                  4458:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_IEMP4             The object has some free space Allocated Space:37748736: Used                                                                                                          
+                                                                                    but cannot be shrunk because   Space:24465817: Reclaimable S                                                                                                          
+                                                                                   ORA-10653: Table is in a clust pace :13282919:                                                                                                                         
+                                                                                   er.                                                                                                                                                                    
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            IDX_IEMP4_DEPTNO     The free space in the object i Allocated Space:30408704: Used                                                                                                          
+                                                                                   s less than 10MB.               Space:22215201: Reclaimable S                                                                                                          
+                                                                                                                  pace :8193503:                                                                                                                          
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_HDEPT4            The free space in the object i Allocated Space:65536: Used Sp                                                                                                          
+                                                                                   s less than 10MB.              ace:1078: Reclaimable Space :6                                                                                                          
+                                                                                                                  4458:                                                                                                                                   
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              INDEX           ORS2            PK_HEMP4             The object has some free space Allocated Space:37748736: Used                                                                                                          
+                                                                                    but cannot be shrunk because   Space:24435936: Reclaimable S                                                                                                          
+                                                                                   ORA-10653: Table is in a clust pace :13312800:                                                                                                                         
+                                                                                   er.                                                                                                                                                                    
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              LOB             ORS2            SYS_LOB0000076834C00 The free space in the object i Allocated Space:262144: Used S                                                                                                          
+                                                              008$$                s less than 10MB.              pace:270336: Reclaimable Space                                                                                                          
+                                                                                                                   :0:                                                                                                                                    
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              LOB             ORS2            SYS_LOB0000076843C00 The free space in the object i Allocated Space:262144: Used S                                                                                                          
+                                                              005$$                s less than 10MB.              pace:270336: Reclaimable Space                                                                                                          
+                                                                                                                   :0:                                                                                                                                    
+                                                                                                                                                                                                                                                          
+TASK_SA_TS_USERS              LOB             ORS2            SYS_LOB0000076820C00 The free space in the object i Allocated Space:262144: Used S                                                                                                          
+                                                              008$$                s less than 10MB.              pace:270336: Reclaimable Space                                                                                                          
+                                                                                                                   :0:                                                                                                                                    
+                                                                                                                                                                                                                                                          
+
+40 rows selected.
+
+SQL> 
+SQL> 
+SQL> 
+SQL> 
+SQL> 
+SQL> 
+SQL> 
+SQL> col task_name format A10
+SQL> col PARENT_REC_IDS format A40
+SQL> col  BENEFIT_TYPE format A40
+SQL> set linesize 200
+SQL> select TASK_NAME, type, RANK   , PARENT_REC_IDS, BENEFIT_TYPE
+  2  from DBA_ADVISOR_RECOMMENDATIONS
+  3  where task_name='TASK_SA_TS_USERS';
+
+TASK_NAME  TYPE                                 RANK PARENT_REC_IDS                           BENEFIT_TYPE                                                                                              
+---------- ------------------------------ ---------- ---------------------------------------- ----------------------------------------                                                                  
+TASK_SA_TS                                                                                    Enable row movement of the table ORS2.AL                                                                  
+_USERS                                                                                        LOBJECTS2 and perform shrink, estimated                                                                   
+                                                                                              savings is 26206208 bytes.                                                                                
+                                                                                                                                                                                                        
+
+SQL> col task_name format A10
+SQL> col message format A40
+SQL> col more_info format A40
+SQL> col impact_type format A40
+SQL> set linesize 200
+SQL> select TASK_NAME, MESSAGE, impact_type, more_info
+  2  from DBA_ADVISOR_FINDINGS
+  3  where task_name='TASK_SA_TS_USERS';
+
+TASK_NAME  MESSAGE                                  IMPACT_TYPE                              MORE_INFO                                                                                                  
+---------- ---------------------------------------- ---------------------------------------- ----------------------------------------                                                                   
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:8192:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :57344:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:28311552: Used Space:274                                                                   
+_USERS     n 10MB.                                                                           43059: Reclaimable Space :868493:                                                                          
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:8192:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :57344:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:67108864: Used Space:651                                                                   
+_USERS     n 10MB.                                                                           60770: Reclaimable Space :1948094:                                                                         
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:62914560: Used Space:558                                                                   
+_USERS     n 10MB.                                                                           44228: Reclaimable Space :7070332:                                                                         
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:62914560: Used Space:558                                                                   
+_USERS     n 10MB.                                                                           44228: Reclaimable Space :7070332:                                                                         
+                                                                                                                                                                                                        
+TASK_SA_TS The object has some free space but canno                                          Allocated Space:75497472: Used Space:592                                                                   
+_USERS     t be shrunk because ORA-10653: Table is                                           41984: Reclaimable Space :16255488:                                                                        
+           in a cluster.                                                                                                                                                                                
+                                                                                                                                                                                                        
+TASK_SA_TS The object has some free space but canno                                          Allocated Space:75497472: Used Space:592                                                                   
+_USERS     t be shrunk because ORA-10653: Table is                                           41984: Reclaimable Space :16255488:                                                                        
+           in a cluster.                                                                                                                                                                                
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:8192:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :57344:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS Enable row movement of the table ORS2.AL                                          Allocated Space:26214400: Used Space:819                                                                   
+_USERS     LOBJECTS2 and perform shrink, estimated                                           2: Reclaimable Space :26206208:                                                                            
+           savings is 26206208 bytes.                                                                                                                                                                   
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1081:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64455:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1100:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64436:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1148:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64388:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1148:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64388:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1081:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64455:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1100:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64436:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1081:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64455:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:8388608: Used Space:5775                                                                   
+_USERS     n 10MB.                                                                           835: Reclaimable Space :2612773:                                                                           
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1100:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64436:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1148:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64388:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1148:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64388:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:13631488: Used Space:104                                                                   
+_USERS     n 10MB.                                                                           00562: Reclaimable Space :3230926:                                                                         
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:12582912: Used Space:980                                                                   
+_USERS     n 10MB.                                                                           6309: Reclaimable Space :2776603:                                                                          
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:5242880: Used Space:5091                                                                   
+_USERS     n 10MB.                                                                           297: Reclaimable Space :151583:                                                                            
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:14680064: Used Space:102                                                                   
+_USERS     n 10MB.                                                                           94303: Reclaimable Space :4385761:                                                                         
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:12582912: Used Space:960                                                                   
+_USERS     n 10MB.                                                                           5648: Reclaimable Space :2977264:                                                                          
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:5242880: Used Space:5091                                                                   
+_USERS     n 10MB.                                                                           297: Reclaimable Space :151583:                                                                            
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:15728640: Used Space:103                                                                   
+_USERS     n 10MB.                                                                           98613: Reclaimable Space :5330027:                                                                         
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:10485760: Used Space:705                                                                   
+_USERS     n 10MB.                                                                           9191: Reclaimable Space :3426569:                                                                          
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:7340032: Used Space:5544                                                                   
+_USERS     n 10MB.                                                                           081: Reclaimable Space :1795951:                                                                           
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1078:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64458:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:20971520: Used Space:205                                                                   
+_USERS     n 10MB.                                                                           61064: Reclaimable Space :410456:                                                                          
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1078:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64458:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The object has some free space but canno                                          Allocated Space:37748736: Used Space:244                                                                   
+_USERS     t be shrunk because ORA-10653: Table is                                           65817: Reclaimable Space :13282919:                                                                        
+           in a cluster.                                                                                                                                                                                
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:30408704: Used Space:222                                                                   
+_USERS     n 10MB.                                                                           15201: Reclaimable Space :8193503:                                                                         
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:65536: Used Space:1078:                                                                    
+_USERS     n 10MB.                                                                           Reclaimable Space :64458:                                                                                  
+                                                                                                                                                                                                        
+TASK_SA_TS The object has some free space but canno                                          Allocated Space:37748736: Used Space:244                                                                   
+_USERS     t be shrunk because ORA-10653: Table is                                           35936: Reclaimable Space :13312800:                                                                        
+           in a cluster.                                                                                                                                                                                
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:262144: Used Space:27033                                                                   
+_USERS     n 10MB.                                                                           6: Reclaimable Space :0:                                                                                   
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:262144: Used Space:27033                                                                   
+_USERS     n 10MB.                                                                           6: Reclaimable Space :0:                                                                                   
+                                                                                                                                                                                                        
+TASK_SA_TS The free space in the object is less tha                                          Allocated Space:262144: Used Space:27033                                                                   
+_USERS     n 10MB.                                                                           6: Reclaimable Space :0:                                                                                   
+                                                                                                                                                                                                        
+
+40 rows selected.
+
+SQL> Col command format A50
+SQL> Col attr1 format A40
+SQL> Set long 500
+SQL> SELECT rec_id, action_id, command, attr1
+  2  FROM user_advisor_actions
+  3  WHERE task_name = 'TASK_SA_TS_USERS'
+  4  ORDER BY rec_id, action_id;
+
+    REC_ID  ACTION_ID COMMAND                                            ATTR1                                                                                                                          
+---------- ---------- -------------------------------------------------- ----------------------------------------                                                                                       
+         1          1 SHRINK SPACE                                       alter table "ORS2"."ALLOBJECTS2" shrink                                                                                        
+                                                                         space                                                                                                                          
+                                                                                                                                                                                                        
+
+SQL> col myscript format a1000
+SQL> set long 4000
+SQL> select dbms_sqltune.SCRIPT_TUNING_TASK('TASK_SA_TS_USERS', 'ALL') MYSCRIPT from dual;
+
+MYSCRIPT                                                                                                                                                                                                
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+There are no recommended actions for this task under the given filters.                                                                                                                                 
+
+SQL> set serveroutput on
+SQL> declare
+  2   buf CLOB;
+  3  begin
+  4  buf := DBMS_ADVISOR.GET_TASK_SCRIPT('TASK_SA_TS_USERS');
+  5  dbms_output.put_line( buf);
+  6  end;
+  7  /
+declare
+*
+ERROR at line 1:
+ORA-13613: The requested operation is not supported for this advisor object. 
+ORA-06512: at "SYS.PRVT_ADVISOR", line 4147 
+ORA-06512: at "SYS.DBMS_SYS_ERROR", line 79 
+ORA-06512: at "SYS.WRI$_ADV_ABSTRACT_T", line 59 
+ORA-06512: at "SYS.PRVT_ADVISOR", line 4131 
+ORA-06512: at "SYS.DBMS_ADVISOR", line 752 
+ORA-06512: at line 4 
+
+
+SQL> spool off
