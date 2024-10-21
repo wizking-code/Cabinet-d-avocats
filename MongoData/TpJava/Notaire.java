@@ -90,7 +90,11 @@ public class Notaire {
 			"_id",
 			"notaireid",
 			new Document("_id", 10)
-		);		
+		);
+		
+		notaire.afficherNombreNotairesParVille(notaire.notaireCollectionName);
+
+		
 	}catch(Exception e){
 		e.printStackTrace();
 	}	
@@ -425,6 +429,25 @@ public class Notaire {
 		for (Document result : results) {
 			System.out.println(result.toJson());
 		}
-	}	
+	}
+	
+	public void afficherNombreNotairesParVille(String nomCollection) {
+		System.out.println("\n\n\n*********** Nombre de notaire par ville *****************");
+		MongoCollection<Document> colNotaires = database.getCollection(nomCollection);
+
+		// Pipeline d'agrégation
+		AggregateIterable<Document> result = colNotaires.aggregate(Arrays.asList(
+			// Grouper par le champ "adresse.ville" et compter les notaires
+			new Document("$group", new Document("_id", "$adresse.ville")
+				.append("nombreNotaires", new Document("$sum", 1)))
+		));
+
+		// Affichage des résultats
+		for (Document doc : result) {
+			String ville = doc.getString("_id");  // Ville
+			int nbreNotaires = doc.getInteger("nombreNotaires");
+			System.out.println("Ville: " + ville + " - Nombre de notaire: " + nbreNotaires);
+		}
+	}
 }
 

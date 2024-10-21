@@ -38,6 +38,7 @@ public class Dossier {
    private String notaireCollectionName="notaire";
    private String clientCollectionName="client";
    private String dossierCollectionName="dossier";
+   private String paiementCollectionName="paiement";
    
    private String notairesFilePath="C:\\Users\\inorgaisse\\Desktop\\MongoData\\";
 
@@ -110,6 +111,10 @@ public class Dossier {
 			"_id",
 			new Document("_id", 1)
 		);
+		
+		dossier.NbreDossierParNotaire(dossier.dossierCollectionName);
+		
+		dossier.afficherNombreDossiersPayesParNotaire(dossier.paiementCollectionName, dossier.dossierCollectionName);
 		
 	}catch(Exception e){
 		e.printStackTrace();
@@ -396,6 +401,56 @@ public class Dossier {
 		for (Document result : results) {
 			System.out.println(result.toJson());
 		}
-	}	
+	}
+
+	public void NbreDossierParNotaire(String nomCollection) {
+		System.out.println("\n\n\n*********** Nombre de dossiers par Notaire *****************");
+		MongoCollection<Document> colDossiers = database.getCollection(nomCollection);
+
+		// Création de la requête d'agrégation pour compter les dossiers par notaire
+		AggregateIterable<Document> result = colDossiers.aggregate(Arrays.asList(
+			new Document("$group", new Document("_id", "$notaireid")  // Regrouper par le champ "notaireid"
+								  .append("nombre_dossiers", new Document("$sum", 1)))  // Compter le nombre de dossiers
+		));
+
+		// Affichage du résultat
+		for (Document doc : result) {
+			Object notaireId = doc.get("_id");  // Récupérer l'ID du notaire (peut être Integer ou String)
+
+			// Afficher le nombre de dossiers
+			System.out.println("Notaire ID : " + notaireId + " " + "Nombre de dossiers: " + doc.getInteger("nombre_dossiers"));
+		}
+	}
+	
+	public void afficherNombreDossiersPayesParNotaire(String nomCollectionPaiement, String nomCollectionDossier) {
+		System.out.println("\n\n\n*********** Nombre de dossiers payés par Notaire *****************");
+		MongoCollection<Document> colPaiements = database.getCollection(nomCollectionPaiement);
+		MongoCollection<Document> colDossiers = database.getCollection(nomCollectionDossier);
+
+		// Pipeline d'agrégation
+		AggregateIterable<Document> result = colPaiements.aggregate(Arrays.asList(
+			// Étape 1: Jointure entre "paiement" et "dossier" via "dossierid"
+			new Document("$lookup", new Document("from", nomCollectionDossier)
+											.append("localField", "dossierid")
+											.append("foreignField", "_id")
+											.append("as", "dossier_info")),
+			
+			// Étape 2: Déconstruire le tableau résultant de la jointure
+			new Document("$unwind", "$dossier_info"),
+			
+			// Étape 3: Grouper par notaireid (qui est dans la collection dossier)
+			new Document("$group", new Document("_id", "$dossier_info.notaireid")
+				.append("nombreDossiersPayes", new Document("$sum", 1)))
+		));
+
+		// Affichage des résultats
+		for (Document doc : result) {
+			Object notaireId = doc.get("_id");  // ID du notaire
+			int nombreDossiersPayes = doc.getInteger("nombreDossiersPayes");
+			System.out.println("Notaire ID: " + notaireId + " - Nombre de dossiers payés: " + nombreDossiersPayes);
+		}
+	}
+
+	
 }
 

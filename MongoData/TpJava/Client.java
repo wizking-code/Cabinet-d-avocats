@@ -89,7 +89,10 @@ public class Client {
 			"_id",
 			"clientid",
 			new Document("_id", 3)
-		);		
+		);
+			
+		client.afficherNombreClientsParVille(client.clientCollectionName);
+		
 	}catch(Exception e){
 		e.printStackTrace();
 	}	
@@ -419,4 +422,23 @@ public class Client {
 		}
 	}
 	
+	public void afficherNombreClientsParVille(String nomCollection) {
+		System.out.println("\n\n\n*********** Nombre de clients par ville *****************");
+		MongoCollection<Document> colClients = database.getCollection(nomCollection);
+
+		// Pipeline d'agrégation
+		AggregateIterable<Document> result = colClients.aggregate(Arrays.asList(
+			// Grouper par le champ "adresse.ville" et compter les clients
+			new Document("$group", new Document("_id", "$adresse.ville")
+				.append("nombreClients", new Document("$sum", 1)))
+		));
+
+		// Affichage des résultats
+		for (Document doc : result) {
+			String ville = doc.getString("_id");  // Ville
+			int nombreClients = doc.getInteger("nombreClients");
+			System.out.println("Ville: " + ville + " - Nombre de clients: " + nombreClients);
+		}
+	}
+
 }

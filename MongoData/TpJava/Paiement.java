@@ -98,7 +98,10 @@ public class Paiement {
 			"dossierid",
 			"_id",
 			new Document("_id", 9)
-		);		
+		);
+
+		paiement.afficherSommeTotalePaiementsParMethode(paiement.paiementCollectionName);
+		
 	}catch(Exception e){
 		e.printStackTrace();
 	}	
@@ -364,6 +367,24 @@ public class Paiement {
 		for (Document result : results) {
 			System.out.println(result.toJson());
 		}
-	}	
+	}
+
+	public void afficherSommeTotalePaiementsParMethode(String nomCollection) {
+		System.out.println("\n\n\n*********** Somme totale de paiement par méthode *****************");
+        MongoCollection<Document> colPaiements = database.getCollection(nomCollection);
+
+        // Agrégation pour calculer la somme des paiements par méthode
+        AggregateIterable<Document> resultat = colPaiements.aggregate(Arrays.asList(
+            new Document("$group", new Document("_id", "$methode")
+                .append("totalPaiements", new Document("$sum", "$montant")))
+        ));
+
+        // Affichage du résultat
+        for (Document doc : resultat) {
+            String methodePaiement = doc.getString("_id");  // La méthode de paiement (clé de regroupement)
+            double totalPaiements = doc.getDouble("totalPaiements");  // La somme des paiements
+            System.out.println("Méthode de paiement : " + methodePaiement + " - Somme totale : " + totalPaiements);
+        }
+    }	
 }
 
