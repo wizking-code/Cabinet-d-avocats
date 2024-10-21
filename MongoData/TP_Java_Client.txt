@@ -1,0 +1,70 @@
+--++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+-------------------------------------------------------------------------------------------------
+-- M4.5.1.2.3 Définition des variables d'environnement
+-------------------------------------------------------------------------------------------------
+
+Assurez que la variable d’environnement PATH contient le path java : ..\java\jdk-x.x.x\bin
+
+Définir une variable d’environnement MYPATH comme suit :
+
+-- Sous Windows
+Set MYPATH=C:\Users\inorgaisse\Desktop\MongoData
+
+-- sous Mac OS
+export MYPATH=?
+
+-- Dans VM Big Data
+export MYPATH=/vagrant/TpBigData/tpmongo/M45TpMongoJava
+
+-------------------------------------------------------------------------------------------------
+-- M4.5.1.2.4 Lignes de compilation
+-------------------------------------------------------------------------------------------------
+
+-- Ligne de compilation et d'exécution de la classe Client.java sous Windows
+javac -g -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% %MYPATH%\TpJava\Client.java
+java -Xmx256m -Xms256m -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% TpJava.Client
+
+-- Ligne de compilation et d'exécution de la classe Notaire.java sous Windows
+javac -g -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% %MYPATH%\TpJava\Notaire.java
+java -Xmx256m -Xms256m -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% TpJava.Notaire
+
+-- Ligne de compilation et d'exécution de la classe Dossier.java sous Windows
+javac -g -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% %MYPATH%\TpJava\Dossier.java
+java -Xmx256m -Xms256m -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% TpJava.Dossier
+
+-- Ligne de compilation et d'exécution de la classe ProjDocument.java sous Windows
+javac -g -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% %MYPATH%\TpJava\ProjDocument.java
+java -Xmx256m -Xms256m -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% TpJava.ProjDocument
+
+-- Ligne de compilation et d'exécution de la classe Paiement.java sous Windows
+javac -g -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% %MYPATH%\TpJava\Paiement.java
+java -Xmx256m -Xms256m -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% TpJava.Paiement
+
+-- Ligne de compilation et d'exécution de la classe Rendezvous.java sous Windows
+javac -g -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% %MYPATH%\TpJava\Rendezvous.java
+java -Xmx256m -Xms256m -cp %MYPATH%\mongojar\mongo-java-driver-3.12.10.jar;%MYPATH% TpJava.Rendezvous
+
+-- Ligne de compilation et d'exécution de la classe Client.java sous MACOS
+javac -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" "$MYPATH/TpJava/Client.java"
+java -Xmx256m -Xms256m -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" TpJava.Client
+
+-- Ligne de compilation et d'exécution de la classe Notaire.java sous MACOS
+javac -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" "$MYPATH/TpJava/Notaire.java"
+java -Xmx256m -Xms256m -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" TpJava.Notaire
+
+-- Ligne de compilation et d'exécution de la classe Dossier.java sous MACOS
+javac -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" "$MYPATH/TpJava/Dossier.java"
+java -Xmx256m -Xms256m -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" TpJava.Dossier
+
+-- Ligne de compilation et d'exécution de la classe ProjDocument.java sous MACOS
+javac -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" "$MYPATH/TpJava/ProjDocument.java"
+java -Xmx256m -Xms256m -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" TpJava.ProjDocument
+
+-- Ligne de compilation et d'exécution de la classe Paiement.java sous MACOS
+javac -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" "$MYPATH/TpJava/Paiement.java"
+java -Xmx256m -Xms256m -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" TpJava.Paiement
+
+-- Ligne de compilation et d'exécution de la classe Rendezvous.java sous MACOS
+javac -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" "$MYPATH/TpJava/Rendezvous.java"
+java -Xmx256m -Xms256m -cp "$MYPATH/mongojar/mongo-java-driver-3.12.10.jar:$MYPATH" TpJava.Rendezvous
