@@ -1,0 +1,20 @@
+--Créer un utilisateur Oracle ayant le nom de votre projet
+
+-- Script pour créer un utilisateur Oracle pour le projet "Notaires"
+CREATE USER NOTAIRES IDENTIFIED BY password
+DEFAULT TABLESPACE NOTAIRES_TS
+TEMPORARY TABLESPACE TEMP
+QUOTA UNLIMITED ON NOTAIRES_TS;
+
+-- Accorder les privilèges nécessaires à l'utilisateur "NOTAIRES"
+GRANT CONNECT, RESOURCE TO NOTAIRES;
+
+-- Autoriser les privilèges d'administration sur le tablespace
+ALTER USER NOTAIRES QUOTA UNLIMITED ON NOTAIRES_TS;
+
+
+
+
+
+
+

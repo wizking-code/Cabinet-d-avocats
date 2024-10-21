@@ -1,0 +1,316 @@
+          ADDM Report for Task 'TASK_254'
+          -------------------------------
+
+Analysis Period
+---------------
+AWR snapshot range from 214 to 215.
+Time period starts at 29-SEP-24 09.35.50 PM
+Time period ends at 29-SEP-24 09.50.41 PM
+
+Analysis Target
+---------------
+Database 'ORCL' with DB ID 1592460600.
+Database version 12.2.0.1.0.
+ADDM performed an analysis of instance orcl, numbered 1 and hosted at
+EMMANUEL-RICHAR.
+
+Activity During the Analysis Period
+-----------------------------------
+Total database time was 854 seconds.
+The average number of active sessions was 1.02.
+
+Summary of Findings
+-------------------
+   Description                 Active Sessions      Recommendations
+                               Percent of Activity
+   --------------------------  -------------------  ---------------
+1  Top SQL Statements          .34 | 33.75          3
+2  Undersized Redo Log Buffer  .18 | 17.29          2
+3  Unusual "Other" Wait Event  .14 | 13.55          4
+4  Soft Parse                  .05 | 5.29           2
+5  Log File Switches           .04 | 3.93           2
+6  Shared Pool Latches         .03 | 3.32           0
+7  Hard Parse                  .02 | 2.16           0
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+          Findings and Recommendations
+          ----------------------------
+
+Finding 1: Top SQL Statements
+Impact is .34 active sessions, 33.75% of total activity.
+--------------------------------------------------------
+SQL statements consuming significant database time were found. These
+statements offer a good opportunity for performance improvement.
+
+   Recommendation 1: SQL Tuning
+   Estimated benefit is .14 active sessions, 13.75% of total activity.
+   -------------------------------------------------------------------
+   Action
+      Investigate the INSERT statement with SQL_ID "c560tsz1ph50d" for
+      possible performance improvements. You can supplement the information
+      given here with an ASH report for this SQL_ID.
+      Related Object
+         SQL statement with SQL_ID c560tsz1ph50d.
+         INSERT INTO HEMP4 SELECT * FROM EMP4
+   Rationale
+      The SQL statement executed in container ORCLPDB with database ID
+      4114669347.
+   Rationale
+      The SQL spent only 18% of its database time on CPU, I/O and Cluster
+      waits. Therefore, the SQL Tuning Advisor is not applicable in this case.
+      Look at performance data for the SQL to find potential improvements.
+   Rationale
+      Database time for this SQL was divided as follows: 100% for SQL
+      execution, 0% for parsing, 0% for PL/SQL execution and 0% for Java
+      execution.
+   Rationale
+      SQL statement with SQL_ID "c560tsz1ph50d" was executed 1 times and had
+      an average elapsed time of 107 seconds.
+   Rationale
+      Waiting for event "log buffer space" in wait class "Configuration"
+      accounted for 72% of the database time spent in processing the SQL
+      statement with SQL_ID "c560tsz1ph50d".
+
+   Recommendation 2: SQL Tuning
+   Estimated benefit is .11 active sessions, 11.25% of total activity.
+   -------------------------------------------------------------------
+   Action
+      Run SQL Tuning Advisor on the INSERT statement with SQL_ID
+      "gca1cw81ds7cu". Additionally, investigate this statement for possible
+      performance improvements. You can supplement the information given here
+      with an ASH report for this SQL_ID.
+      Related Object
+         SQL statement with SQL_ID gca1cw81ds7cu.
+         INSERT INTO IEMP4 SELECT * FROM EMP4
+   Rationale
+      The SQL statement executed in container ORCLPDB with database ID
+      4114669347.
+   Rationale
+      The SQL spent 33% of its database time on CPU, I/O and Cluster waits.
+      This part of database time may be improved by the SQL Tuning Advisor.
+      Look at data given below and an ASH report for further performance
+      improvements.
+   Rationale
+      Database time for this SQL was divided as follows: 100% for SQL
+      execution, 0% for parsing, 0% for PL/SQL execution and 0% for Java
+      execution.
+   Rationale
+      SQL statement with SQL_ID "gca1cw81ds7cu" was executed 1 times and had
+      an average elapsed time of 89 seconds.
+   Rationale
+      Waiting for event "log buffer space" in wait class "Configuration"
+      accounted for 55% of the database time spent in processing the SQL
+      statement with SQL_ID "gca1cw81ds7cu".
+
+   Recommendation 3: SQL Tuning
+   Estimated benefit is .09 active sessions, 8.75% of total activity.
+   ------------------------------------------------------------------
+   Action
+      Run SQL Tuning Advisor on the SELECT statement with SQL_ID
+      "a4vngwf27460c".
+      Related Object
+         SQL statement with SQL_ID a4vngwf27460c.
+         select lemp.column_value.empno,lemp.column_value.ename
+         from
+         table(
+         select d.LISTEMPLOYES   from BIGODEPT2 d
+         where d.deptno=1000
+         )lemp
+   Rationale
+      The SQL statement executed in container ORCLPDB with database ID
+      4114669347.
+   Rationale
+      The SQL spent 100% of its database time on CPU, I/O and Cluster waits.
+      This part of database time may be improved by the SQL Tuning Advisor.
+   Rationale
+      Database time for this SQL was divided as follows: 100% for SQL
+      execution, 0% for parsing, 0% for PL/SQL execution and 0% for Java
+      execution.
+   Rationale
+      SQL statement with SQL_ID "a4vngwf27460c" was executed 2 times and had
+      an average elapsed time of 39 seconds.
+   Rationale
+      At least 2 distinct execution plans were utilized for this SQL statement
+      during the analysis period.
+
+
+Finding 2: Undersized Redo Log Buffer
+Impact is .18 active sessions, 17.29% of total activity.
+--------------------------------------------------------
+Waits for redo log buffer space were consuming significant database time.
+
+   Recommendation 1: Database Configuration
+   Estimated benefit is .18 active sessions, 17.29% of total activity.
+   -------------------------------------------------------------------
+   Action
+      Increase the size of the redo log buffer by setting the value of
+      parameter "log_buffer" to 32 M.
+   Rationale
+      The value of parameter "log_buffer" was "7503872" during the analysis
+      period.
+
+   Recommendation 2: Host Configuration
+   Estimated benefit is .18 active sessions, 17.29% of total activity.
+   -------------------------------------------------------------------
+   Action
+      Investigate the possibility of improving the performance of I/O to the
+      online redo log files.
+   Rationale
+      The average size of writes to the online redo log files was 55 K and the
+      average time per write was 8 milliseconds.
+
+   Symptoms That Led to the Finding:
+   ---------------------------------
+      Wait class "Configuration" was consuming significant database time.
+      Impact is .22 active sessions, 21.34% of total activity.
+
+
+Finding 3: Unusual "Other" Wait Event
+Impact is .14 active sessions, 13.55% of total activity.
+--------------------------------------------------------
+Wait event "DLM cross inst call completion" in wait class "Other" was
+consuming significant database time.
+
+   Recommendation 1: Application Analysis
+   Estimated benefit is .14 active sessions, 13.55% of total activity.
+   -------------------------------------------------------------------
+   Action
+      Investigate the cause for high "DLM cross inst call completion" waits.
+      Refer to Oracle's "Database Reference" for the description of this wait
+      event.
+
+   Recommendation 2: Application Analysis
+   Estimated benefit is .14 active sessions, 13.55% of total activity.
+   -------------------------------------------------------------------
+   Action
+      Investigate the cause for high "DLM cross inst call completion" waits in
+      Module "SQL*Plus".
+   Rationale
+      The module activity was in container ORCLPDB with database ID
+      4114669347.
+
+   Recommendation 3: Application Analysis
+   Estimated benefit is .14 active sessions, 13.55% of total activity.
+   -------------------------------------------------------------------
+   Action
+      Investigate the cause for high "DLM cross inst call completion" waits in
+      Service "orclpdb".
+   Rationale
+      The session connected to container ORCLPDB with database ID 4114669347.
+
+   Recommendation 4: Application Analysis
+   Estimated benefit is .14 active sessions, 13.55% of total activity.
+   -------------------------------------------------------------------
+   Action
+      Investigate the cause for high "DLM cross inst call completion" waits
+      with P1,P2,P3 ("caller instance number, cluster incarnation number,
+      request identifier") values "1", "4294967295" and "37" respectively.
+
+   Symptoms That Led to the Finding:
+   ---------------------------------
+      Wait class "Other" was consuming significant database time.
+      Impact is .14 active sessions, 13.57% of total activity.
+
+
+Finding 4: Soft Parse
+Impact is .05 active sessions, 5.29% of total activity.
+-------------------------------------------------------
+Soft parsing of SQL statements was consuming significant database time.
+
+   Recommendation 1: Application Analysis
+   Estimated benefit is .05 active sessions, 5.29% of total activity.
+   ------------------------------------------------------------------
+   Action
+      Investigate application logic to keep open the frequently used cursors.
+      Note that cursors are closed by both cursor close calls and session
+      disconnects.
+
+   Recommendation 2: Database Configuration
+   Estimated benefit is .05 active sessions, 5.29% of total activity.
+   ------------------------------------------------------------------
+   Action
+      Consider increasing the session cursor cache size by increasing the
+      value of parameter "session_cached_cursors".
+   Rationale
+      The value of parameter "session_cached_cursors" was "50" during the
+      analysis period.
+
+
+Finding 5: Log File Switches
+Impact is .04 active sessions, 3.93% of total activity.
+-------------------------------------------------------
+Log file switch operations were consuming significant database time while
+waiting for checkpoint completion.
+This problem can be caused by use of hot backup mode on tablespaces.  DML to
+tablespaces in hot backup mode causes generation of additional redo.
+
+   Recommendation 1: Database Configuration
+   Estimated benefit is .04 active sessions, 3.93% of total activity.
+   ------------------------------------------------------------------
+   Action
+      Verify whether incremental shipping was used for standby databases.
+
+   Recommendation 2: Database Configuration
+   Estimated benefit is .04 active sessions, 3.93% of total activity.
+   ------------------------------------------------------------------
+   Action
+      Increase the size of the log files to 2048 M to hold at least 20 minutes
+      of redo information.
+
+   Symptoms That Led to the Finding:
+   ---------------------------------
+      Wait class "Configuration" was consuming significant database time.
+      Impact is .22 active sessions, 21.34% of total activity.
+
+
+Finding 6: Shared Pool Latches
+Impact is .03 active sessions, 3.32% of total activity.
+-------------------------------------------------------
+Contention for latches related to the shared pool was consuming significant
+database time.
+Waits for "library cache: mutex X" amounted to 1% of database time.
+Waits for "latch: shared pool" amounted to 1% of database time.
+
+   No recommendations are available.
+
+   Symptoms That Led to the Finding:
+   ---------------------------------
+      Wait class "Concurrency" was consuming significant database time.
+      Impact is .03 active sessions, 3.32% of total activity.
+
+
+Finding 7: Hard Parse
+Impact is .02 active sessions, 2.16% of total activity.
+-------------------------------------------------------
+Hard parsing of SQL statements was consuming significant database time.
+Hard parses due to cursor environment mismatch were not consuming significant
+database time.
+Hard parsing SQL statements that encountered parse errors was not consuming
+significant database time.
+Hard parses due to literal usage and cursor invalidation were not consuming
+significant database time.
+
+   No recommendations are available.
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+          Additional Information
+          ----------------------
+
+Miscellaneous Information
+-------------------------
+Wait class "Application" was not consuming significant database time.
+Wait class "Commit" was not consuming significant database time.
+CPU was not a bottleneck for the instance.
+Wait class "Network" was not consuming significant database time.
+Wait class "User I/O" was not consuming significant database time.
+Session connect and disconnect calls were not consuming significant database
+time.
+
