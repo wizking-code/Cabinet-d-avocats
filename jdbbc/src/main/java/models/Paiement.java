@@ -7,7 +7,7 @@ import oracle.sql.REF;
 public class Paiement implements SQLData {
     private String sql_type;
     private int paiementNo;
-    private double montant;
+    private BigDecimal montant;
     private String methode;
     private String descPaiement;
     private Date datePaiement;
@@ -18,7 +18,7 @@ public class Paiement implements SQLData {
     public Paiement(String sql_type, int paiementNo, double montant, String methode, String descPaiement, Date datePaiement, REF refDossier) {
         this.sql_type = sql_type;
         this.paiementNo = paiementNo;
-        this.montant = montant;
+        this.montant = BigDecimal.valueOf(montant);
         this.methode = methode;
         this.descPaiement = descPaiement;
         this.datePaiement = datePaiement;
@@ -34,7 +34,7 @@ public class Paiement implements SQLData {
     public void readSQL(SQLInput stream, String typeName) throws SQLException {
         sql_type = typeName;
         paiementNo = stream.readInt();
-        montant = stream.readDouble();
+        montant = BigDecimal.valueOf(stream.readDouble());
         methode = stream.readString();
         descPaiement = stream.readString();
         datePaiement = stream.readDate();
@@ -44,7 +44,7 @@ public class Paiement implements SQLData {
     @Override
     public void writeSQL(SQLOutput stream) throws SQLException {
         stream.writeInt(paiementNo);
-        stream.writeDouble(montant);
+        stream.writeBigDecimal(montant);
         stream.writeString(methode);
         stream.writeString(descPaiement);
         stream.writeDate(datePaiement);
@@ -54,7 +54,7 @@ public class Paiement implements SQLData {
     // Getters and setters
     public int getPaiementNo() { return paiementNo; }
     public void setPaiementNo(int paiementNo) { this.paiementNo = paiementNo; }
-    public double getMontant() { return montant; }
+    public BigDecimal getMontant() { return montant; }
     public void setMontant(BigDecimal montant) { this.montant = montant; }
     public String getMethode() { return methode; }
     public void setMethode(String methode) { this.methode = methode; }

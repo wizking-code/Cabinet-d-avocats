@@ -2,9 +2,12 @@ package models;
 
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.*;
 
 import oracle.sql.ARRAY;
+import oracle.sql.REF;
+import oracle.sql.STRUCT;
 
 public class Notaire implements SQLData {
     private String sql_type;
@@ -87,6 +90,8 @@ public class Notaire implements SQLData {
         this.displayPrenoms();
         this.displayAdresse();
         this.displayTelephones();
+        this.displayListRefDossiers();
+        this.displayDossiersValues();
         System.out.println("specialite = " + this.getSpecialite());
         System.out.println("}");
         System.out.println("");
@@ -119,6 +124,46 @@ public class Notaire implements SQLData {
             System.out.println("Telephone[" + i + "] = " + lesTelephones[i]);
         }
     }
+
+    public void displayListRefDossiers() throws SQLException {
+        // Affichage des références de dossiers
+        if (this.getListRefDossiers() != null) {
+            Object[] dossiersArray = (Object[]) this.getListRefDossiers().getArray();
+            System.out.println("Liste des Dossiers Référencés (Références):");
+            for (Object dossierRef : dossiersArray) {
+                REF dossierRefObj = (REF) dossierRef; // Cast en REF
+                System.out.println("Dossier Ref: " + dossierRefObj);
+            }
+        } else {
+            System.out.println("Liste des Dossiers Référencés: Not available");
+        }
+    }
+
+    public void displayDossiersValues() throws SQLException {
+        // Affichage des valeurs des dossiers
+        if (this.getListRefDossiers() != null) {
+            Object[] dossiersArray = (Object[]) this.getListRefDossiers().getArray();
+            System.out.println("Liste des Dossiers Référencés (Valeurs):");
+            for (Object dossierRef : dossiersArray) {
+                REF dossierRefObj = (REF) dossierRef; // Cast en REF
+                STRUCT dossierStruct = (STRUCT) dossierRefObj.getValue(); // Récupérer l'objet STRUCT à partir du REF
+
+                Object[] dossierAttributes = dossierStruct.getAttributes();
+
+                // Supposons que Dossier a les attributs suivants : dossierno, nom, description
+                Integer dossierNo = ((BigDecimal) dossierAttributes[0]).intValue();
+                String dossierNom = (String) dossierAttributes[1];
+                String dossierDescription = (String) dossierAttributes[2];
+
+                System.out.println("Dossier No: " + dossierNo);
+                System.out.println("Nom: " + dossierNom);
+                System.out.println("Description: " + dossierDescription);
+            }
+        } else {
+            System.out.println("Liste des Dossiers Référencés: Not available");
+        }
+    }
+
 
 }
 

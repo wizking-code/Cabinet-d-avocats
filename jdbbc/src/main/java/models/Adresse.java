@@ -1,5 +1,4 @@
 package models;
-
 import java.sql.*;
 
 public class Adresse implements SQLData {

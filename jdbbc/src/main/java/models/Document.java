@@ -76,18 +76,39 @@ public class Document implements SQLData {
         System.out.println("titre = " + this.getTitre());
         System.out.println("typeDoc = " + this.getTypeDoc());
         this.displayContenu();
+        this.displayRefDossier();
         System.out.println("}");
         System.out.println("");
     }
 
     public void displayContenu() throws SQLException, IOException {
-        BufferedReader clobReader = new BufferedReader(this.getContenu().getCharacterStream());
-        String ligne;
-        System.out.println("[ Contenu: ");
-        while ((ligne = clobReader.readLine()) != null) {
-            System.out.println("   " + ligne);
+        if (this.getContenu() != null){
+            BufferedReader clobReader = new BufferedReader(this.getContenu().getCharacterStream());
+            String ligne;
+            System.out.println("[ Contenu: ");
+            while ((ligne = clobReader.readLine()) != null) {
+                System.out.println("   " + ligne);
+            }
+            System.out.println("] ");
+        }else {
+            System.out.println("Pas de contenu");
         }
-        System.out.println("] ");
+    }
+    public void displayRefDossier() throws SQLException {
+        if (this.getRefDossier() != null) {
+            // Obtenir l'objet Dossier référencé
+            Object dossierObject = this.getRefDossier().getValue();
+            if (dossierObject instanceof Dossier) { // Assurez-vous d'avoir une classe Dossier
+                Dossier dossier = (Dossier) dossierObject;
+                System.out.println("Référence Dossier:");
+                System.out.println("  Dossier No = " + dossier.getDossierNo()); // Suppose que Dossier a un getter pour le numéro
+                System.out.println("  Dossier Titre = " + dossier.getDescription()); // Exemple de champ dans Dossier
+            } else {
+                System.out.println("Référence Dossier: Type inattendu");
+            }
+       } else {
+            System.out.println("Référence Dossier: Not available");
+        }
     }
 
 }
